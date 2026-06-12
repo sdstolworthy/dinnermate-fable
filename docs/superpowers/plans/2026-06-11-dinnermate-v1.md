@@ -238,8 +238,8 @@ Workspace deps (pin in `[workspace.dependencies]`): axum 0.8 (macros), tokio 1 (
 
 `RoomService::new(repo: Arc<dyn RoomRepo>, provider: Arc<dyn RestaurantProvider>, rng: ...)`. Methods: `create_room(user, CreateRoom) -> (Room, Vec<Restaurant>)` (validate → provider.search → filter → error InvalidParams("no restaurants match") if empty → snapshot via repo, code-retry loop), `get_room(code, user)`, `join(code, user, display_name)` (idempotent: return existing participant), `swipe(code, user, restaurant_id, liked)` (must be participant → NotInRoom; unknown id → UnknownRestaurant; repo Conflict → AlreadySwiped), `matches(code)`. `ListService`: `create(owner, name)`, `get(code)`, `add_item(code, user, NewItem)`, `mine(owner)`.
 
-- [ ] Tests first (fakes): create_room happy path snapshots filtered deck; empty deck → InvalidParams; join twice → same participant id; swipe before join → NotInRoom; duplicate swipe → AlreadySwiped; unknown restaurant → UnknownRestaurant; matches sorted by like_count desc (seed fake with swipes from 3 participants); list add by non-owner succeeds (shared lists are open by code)
-- [ ] `cargo test -p dinnermate-core` → PASS; commit `feat(core): room and list services`
+- [x] Tests first (fakes): create_room happy path snapshots filtered deck; empty deck → InvalidParams; join twice → same participant id; swipe before join → NotInRoom; duplicate swipe → AlreadySwiped; unknown restaurant → UnknownRestaurant; matches sorted by like_count desc (seed fake with swipes from 3 participants); list add by non-owner succeeds (shared lists are open by code)
+- [x] `cargo test -p dinnermate-core` → PASS; commit `feat(core): room and list services`
 
 ## Task 3: SeedProvider
 
