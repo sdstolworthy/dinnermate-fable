@@ -82,12 +82,88 @@ class _RoomScreenState extends State<RoomScreen> {
 
   Widget _body(RoomState state) {
     if (state.loading) return const CenteredLoader();
+    if (state.notFound) return _endedView();
     if (state.errorMessage != null) {
       return FriendlyError(message: state.errorMessage!, onRetry: state.load);
     }
-    if (!state.joined) return _joinView(state);
-    if (state.deckDone) return _doneView();
-    return _swipeView(state);
+    final content = !state.joined
+        ? _joinView(state)
+        : state.deckDone
+            ? _doneView()
+            : _swipeView(state);
+    final header = _roomHeader(state);
+    if (header == null) return content;
+    return Column(children: [header, Expanded(child: content)]);
+  }
+
+  /// Compact context strip under the app bar's code chip: who's here, and
+  /// which list this room came from.
+  Widget? _roomHeader(RoomState state) {
+    final theme = Theme.of(context);
+    final participants = _participantsLine(state.participants);
+    final sourceListName = state.room?.sourceListName;
+    if (participants == null && sourceListName == null) return null;
+    final style =
+        theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+      child: Column(
+        children: [
+          if (participants != null)
+            Text('👥 $participants', textAlign: TextAlign.center, style: style),
+          if (sourceListName != null)
+            Padding(
+              padding: EdgeInsets.only(top: participants == null ? 0 : 2),
+              child: Text(
+                'From list: $sourceListName',
+                textAlign: TextAlign.center,
+                style: style?.copyWith(fontStyle: FontStyle.italic),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String? _participantsLine(List<String> names) {
+    if (names.isEmpty) return null;
+    if (names.length <= 3) return names.join(', ');
+    return '${names.take(2).join(', ')} +${names.length - 2}';
+  }
+
+  Widget _endedView() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('🌙', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 12),
+            Text(
+              'This room has ended',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Rooms quietly wind down after a while. Start a fresh one '
+              'whenever you’re hungry.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.tonal(
+              onPressed: () => context.go('/'),
+              child: const Text('Back home'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _joinView(RoomState state) {

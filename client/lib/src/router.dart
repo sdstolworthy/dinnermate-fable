@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'api/api_client.dart';
+import 'recent_rooms.dart';
 import 'screens/create_room.dart';
 import 'screens/home.dart';
 import 'screens/list_detail.dart';
@@ -26,8 +27,9 @@ GoRouter buildRouter() {
           final code = state.pathParameters['code']!.toUpperCase();
           final extra = state.extra;
           return ChangeNotifierProvider(
-            create: (context) =>
-                RoomState(context.read<ApiClient>(), code)..load(),
+            create: (context) => RoomState(context.read<ApiClient>(), code,
+                recentRooms: context.read<RecentRooms>())
+              ..load(),
             child: RoomScreen(
               code: code,
               initialDisplayName: extra is String ? extra : null,
@@ -40,7 +42,8 @@ GoRouter buildRouter() {
         builder: (context, state) {
           final code = state.pathParameters['code']!.toUpperCase();
           return ChangeNotifierProvider(
-            create: (context) => RoomState(context.read<ApiClient>(), code)
+            create: (context) => RoomState(context.read<ApiClient>(), code,
+                recentRooms: context.read<RecentRooms>())
               ..load()
               ..startPolling(),
             child: MatchesScreen(code: code),

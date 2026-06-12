@@ -7,6 +7,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../state/lists_state.dart';
 import '../widgets/restaurant_card.dart';
+import '../widgets/room_created_view.dart';
 import '../widgets/status_views.dart';
 
 class ListDetailScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   bool _isOwner = false;
   bool _loading = true;
   bool _joining = false;
+  bool _creatingRoom = false;
   String? _error;
 
   @override
@@ -180,6 +182,31 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
         .showSnackBar(const SnackBar(content: Text('List code copied!')));
   }
 
+  /// Spins a swipe room out of this list and hands off to the shared
+  /// share/join success flow.
+  Future<void> _swipeThisList() async {
+    final api = context.read<ApiClient>();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _creatingRoom = true);
+    try {
+      final (room, _) =
+          await api.createRoomFromList(widget.code, name: _list?.name);
+      if (!mounted) return;
+      await navigator.push(MaterialPageRoute<void>(
+        builder: (_) => RoomCreatedScreen(room: room),
+      ));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } on Exception {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't start a room. Try again?")),
+      );
+    } finally {
+      if (mounted) setState(() => _creatingRoom = false);
+    }
+  }
+
   Future<void> _addItemDialog() async {
     final lists = context.read<ListsState>();
     final messenger = ScaffoldMessenger.of(context);
@@ -321,6 +348,22 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                 onPressed: _copyCode,
               ),
             ),
+            if (_isMember) ...[
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: _creatingRoom ? null : _swipeThisList,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                child: _creatingRoom
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 3),
+                      )
+                    : const Text('Swipe this list 🍽️'),
+              ),
+            ],
             const SizedBox(height: 16),
             if (_items.isEmpty)
               Padding(
@@ -346,7 +389,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     leading: Text(
-                      emojiForCuisine(item.cuisine ?? ''),
+                      emojiForCuisine(item.cuisine),
                       style: const TextStyle(fontSize: 26),
                     ),
                     title: Text(

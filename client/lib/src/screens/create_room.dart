@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../widgets/restaurant_card.dart';
+import '../widgets/room_created_view.dart';
 
 class _CityPreset {
   const _CityPreset(this.label, this.lat, this.lng);
@@ -48,7 +47,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _name = TextEditingController();
   final _lat = TextEditingController();
   final _lng = TextEditingController();
-  final _shareName = TextEditingController();
 
   _CityPreset _city = _presets.first;
   TravelMode _travelMode = TravelMode.walking;
@@ -65,7 +63,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     _name.dispose();
     _lat.dispose();
     _lng.dispose();
-    _shareName.dispose();
     super.dispose();
   }
 
@@ -109,45 +106,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     }
   }
 
-  Future<void> _startSwiping() async {
-    final room = _created!;
-    final name = _shareName.text.trim();
-    if (name.isEmpty) {
-      setState(() => _error = 'Tell us your name first');
-      return;
-    }
-    final api = context.read<ApiClient>();
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      await api.joinRoom(room.code, name);
-      if (!mounted) return;
-      context.go('/r/${room.code}');
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
-    } on Exception {
-      if (mounted) {
-        setState(() => _error = "Couldn't join. Check your connection?");
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _copyLink(String link) {
-    Clipboard.setData(ClipboardData(text: link));
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Link copied!')));
-  }
-
   @override
   Widget build(BuildContext context) {
     final created = _created;
     return Scaffold(
       appBar: AppBar(title: Text(created == null ? 'Start a room' : 'Room ready!')),
-      body: created == null ? _form() : _share(created),
+      body: created == null ? _form() : RoomCreatedView(room: created),
     );
   }
 
@@ -346,79 +310,4 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
-  Widget _share(Room room) {
-    final theme = Theme.of(context);
-    final origin = Uri.base.scheme.startsWith('http') ? Uri.base.origin : '';
-    final link = '$origin/#/r/${room.code}';
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('🎉',
-                  textAlign: TextAlign.center, style: TextStyle(fontSize: 56)),
-              const SizedBox(height: 12),
-              Text(
-                'Share this code with your table',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                room.code,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.displayMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 10,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: ActionChip(
-                  avatar: const Icon(Icons.copy_rounded, size: 18),
-                  label: const Text('Copy link'),
-                  onPressed: () => _copyLink(link),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                link,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _shareName,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(labelText: 'Your name'),
-                onSubmitted: (_) => _startSwiping(),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 64,
-                child: FilledButton(
-                  onPressed: _busy ? null : _startSwiping,
-                  child: const Text('Start swiping'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

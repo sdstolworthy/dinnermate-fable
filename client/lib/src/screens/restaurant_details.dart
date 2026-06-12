@@ -193,7 +193,16 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     style: theme.textTheme.bodyLarge
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
-                  // v3 Task 6: dedicated no-coords layout; interim hide.
+                  const SizedBox(height: 4),
+                  if (restaurant.rating != null)
+                    Text(
+                      '★ ${restaurant.rating!.toStringAsFixed(1)}'
+                      '${restaurant.ratingCount == null ? '' : ' (${restaurant.ratingCount})'}',
+                      style: theme.textTheme.titleSmall,
+                    )
+                  else
+                    const NewToUsCaption(),
+                  // No coordinates (e.g. free-form list items): no map.
                   if (restaurant.lat != null && restaurant.lng != null) ...[
                     const SizedBox(height: 16),
                     ClipRRect(
@@ -217,14 +226,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _heroHeader(Restaurant restaurant) {
-    // v3 Task 6: null cuisine gets the dedicated neutral warm gradient.
-    final cuisine = restaurant.cuisine ?? '';
     return Container(
       height: 160,
-      decoration: BoxDecoration(gradient: gradientForCuisine(cuisine)),
+      decoration:
+          BoxDecoration(gradient: gradientForCuisine(restaurant.cuisine)),
       child: Center(
         child: Text(
-          emojiForCuisine(cuisine),
+          emojiForCuisine(restaurant.cuisine),
           style: const TextStyle(fontSize: 72),
         ),
       ),

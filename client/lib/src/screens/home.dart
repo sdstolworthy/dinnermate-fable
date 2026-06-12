@@ -1,15 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../recent_rooms.dart';
 import '../widgets/big_button.dart';
 
 final _upperCaseFormatter = TextInputFormatter.withFunction(
   (oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()),
 );
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  List<RecentRoomEntry> _recent = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final entries = await context.read<RecentRooms>().all();
+    if (mounted) setState(() => _recent = entries);
+  }
 
   void _showJoinSheet(BuildContext context) {
     showModalBottomSheet<void>(
@@ -17,6 +37,32 @@ class HomeScreen extends StatelessWidget {
       isScrollControlled: true,
       showDragHandle: true,
       builder: (sheetContext) => const _JoinSheet(),
+    );
+  }
+
+  Widget _jumpBackIn(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Jump back in',
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final entry in _recent)
+              ActionChip(
+                avatar: const Text('🍽️'),
+                label: Text('${entry.label} · ${entry.code}'),
+                onPressed: () => context.push('/r/${entry.code}'),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -66,6 +112,10 @@ class HomeScreen extends StatelessWidget {
                     tonal: true,
                     onPressed: () => _showJoinSheet(context),
                   ),
+                  if (_recent.isNotEmpty) ...[
+                    const SizedBox(height: 28),
+                    _jumpBackIn(theme),
+                  ],
                   const SizedBox(height: 16),
                   BigButton(
                     emoji: '📋',

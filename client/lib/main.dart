@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'src/api/api_client.dart';
 import 'src/identity.dart';
+import 'src/recent_rooms.dart';
 import 'src/router.dart';
 import 'src/theme.dart';
 
@@ -23,6 +24,8 @@ class DinnermateApp extends StatelessWidget {
         Provider<KeyValueStore>(create: (_) => SharedPrefsStore()),
         Provider<Identity>(
             create: (context) => Identity(context.read<KeyValueStore>())),
+        Provider<RecentRooms>(
+            create: (context) => RecentRooms(context.read<KeyValueStore>())),
         Provider<ApiClient>(
           create: (context) => ApiClient(
             '${const String.fromEnvironment('API_BASE_URL', defaultValue: '/api')}/v1',

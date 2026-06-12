@@ -4,24 +4,33 @@ import 'package:flutter/foundation.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../recent_rooms.dart';
 
 /// Per-room session: deck, membership, optimistic swipes, match polling.
 class RoomState extends ChangeNotifier {
   RoomState(this._api, this.roomCode,
-      {this.pollInterval = const Duration(seconds: 3)});
+      {RecentRooms? recentRooms,
+      this.pollInterval = const Duration(seconds: 3)})
+      : _recentRooms = recentRooms;
 
   final ApiClient _api;
   final String roomCode;
   final Duration pollInterval;
 
+  /// Optional "jump back in" history; recorded on successful load, dropped
+  /// when the room turns out to have ended (404).
+  final RecentRooms? _recentRooms;
+
   Room? room;
   List<Restaurant> deck = const [];
   Participant? me;
+  List<String> participants = const [];
   int deckIndex = 0;
   List<MatchEntry> matches = const [];
   int participantCount = 0;
   bool loading = true;
   bool joining = false;
+  bool notFound = false;
   String? errorMessage;
   String? joinError;
 
@@ -34,14 +43,23 @@ class RoomState extends ChangeNotifier {
   Future<void> load() async {
     loading = true;
     errorMessage = null;
+    notFound = false;
     _notify();
     try {
       final detail = await _api.getRoom(roomCode);
       room = detail.room;
       deck = detail.deck;
       me = detail.me;
+      participants = detail.participants;
+      final loaded = room!;
+      await _recentRooms?.record(roomCode,
+          loaded.name ?? loaded.sourceListName ?? loaded.locationLabel);
       if (joined) startPolling();
     } on ApiException catch (e) {
+      if (e.status == 404) {
+        notFound = true;
+        await _recentRooms?.remove(roomCode);
+      }
       errorMessage = e.message;
     } on Exception {
       errorMessage = "Couldn't reach the kitchen. Check your connection?";

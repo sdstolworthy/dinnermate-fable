@@ -33,13 +33,36 @@ const Map<String, List<Color>> _cuisineGradients = {
 
 const List<Color> _fallbackGradient = [Color(0xFFF1E8DF), Color(0xFFD9C8B8)];
 
-String emojiForCuisine(String cuisine) => _cuisineEmoji[cuisine] ?? '🍽️';
+/// Unknown-cuisine cards get a neutral warm tone rather than guessing.
+const List<Color> _neutralGradient = [Color(0xFFEFE2D8), Color(0xFFDFCDBC)];
 
-LinearGradient gradientForCuisine(String cuisine) => LinearGradient(
+String emojiForCuisine(String? cuisine) =>
+    cuisine == null ? '🍽️' : _cuisineEmoji[cuisine] ?? '🍽️';
+
+LinearGradient gradientForCuisine(String? cuisine) => LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: _cuisineGradients[cuisine] ?? _fallbackGradient,
+      colors: cuisine == null
+          ? _neutralGradient
+          : _cuisineGradients[cuisine] ?? _fallbackGradient,
     );
+
+/// Soft caption shown where the rating would go when we have none.
+class NewToUsCaption extends StatelessWidget {
+  const NewToUsCaption({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      'New to us',
+      style: theme.textTheme.titleSmall?.copyWith(
+        color: theme.colorScheme.outline,
+        fontStyle: FontStyle.italic,
+      ),
+    );
+  }
+}
 
 class CuisineChip extends StatelessWidget {
   const CuisineChip({super.key, required this.cuisine});
@@ -99,8 +122,6 @@ class RestaurantCard extends StatelessWidget {
                   runSpacing: 8,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    // v3 Task 6: real unknown-data rendering ("New to us",
-                    // neutral gradient). Interim: hide what we don't know.
                     if (restaurant.cuisine != null)
                       CuisineChip(cuisine: restaurant.cuisine!),
                     if (restaurant.priceLevel != null)
@@ -114,7 +135,9 @@ class RestaurantCard extends StatelessWidget {
                         '★ ${restaurant.rating!.toStringAsFixed(1)} '
                         '(${restaurant.ratingCount ?? 0})',
                         style: theme.textTheme.titleSmall,
-                      ),
+                      )
+                    else
+                      const NewToUsCaption(),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -146,13 +169,12 @@ class RestaurantCard extends StatelessWidget {
       );
 
   Widget _photo() {
-    // v3 Task 6: null cuisine gets the dedicated neutral warm gradient.
-    final cuisine = restaurant.cuisine ?? '';
     final placeholder = DecoratedBox(
-      decoration: BoxDecoration(gradient: gradientForCuisine(cuisine)),
+      decoration:
+          BoxDecoration(gradient: gradientForCuisine(restaurant.cuisine)),
       child: Center(
         child: Text(
-          emojiForCuisine(cuisine),
+          emojiForCuisine(restaurant.cuisine),
           style: const TextStyle(fontSize: 96),
         ),
       ),
@@ -217,7 +239,6 @@ class RestaurantCardBack extends StatelessWidget {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // v3 Task 6: real unknown-data rendering; interim hide.
               if (restaurant.cuisine != null)
                 CuisineChip(cuisine: restaurant.cuisine!),
               if (restaurant.priceLevel != null)
@@ -231,7 +252,9 @@ class RestaurantCardBack extends StatelessWidget {
                   '★ ${restaurant.rating!.toStringAsFixed(1)} '
                   '(${_groupThousands(restaurant.ratingCount ?? 0)} ratings)',
                   style: theme.textTheme.titleSmall,
-                ),
+                )
+              else
+                const NewToUsCaption(),
             ],
           ),
         ],
