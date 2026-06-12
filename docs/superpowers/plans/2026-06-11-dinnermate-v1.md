@@ -315,8 +315,8 @@ Behavior requirements (see spec §Flutter client + §vibe):
 
 **Files:** Create `client/Dockerfile` (copy fulfilled's two-stage pattern verbatim, ARG `API_BASE_URL=/api`), `client/nginx.conf` (SPA fallback to index.html; `location /api/ { proxy_pass http://api:8080/api/; }` so same-origin in compose; gzip on).
 
-- [ ] `docker build -t dinnermate-web client/` → succeeds (this also proves `flutter build web --release` compiles)
-- [ ] Commit `build(client): web dockerfile and nginx`
+- [x] `docker build -t dinnermate-web client/` → succeeds (this also proves `flutter build web --release` compiles)
+- [x] Commit `build(client): web dockerfile and nginx`
 
 ## Task 11: API Dockerfile + compose + e2e smoke
 
