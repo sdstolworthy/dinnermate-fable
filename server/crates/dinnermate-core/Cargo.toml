@@ -1,0 +1,13 @@
+[package]
+name = "dinnermate-core"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+rand.workspace = true

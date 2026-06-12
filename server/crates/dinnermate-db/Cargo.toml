@@ -1,0 +1,12 @@
+[package]
+name = "dinnermate-db"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+dinnermate-core.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
