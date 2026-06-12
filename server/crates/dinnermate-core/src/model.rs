@@ -19,15 +19,18 @@ pub struct Restaurant {
     /// Provider-scoped id, e.g. "seed-001".
     pub id: String,
     pub name: String,
-    /// Lowercase single tag, e.g. "thai".
-    pub cuisine: String,
-    pub price_level: u8,
-    pub rating: f32,
-    pub rating_count: u32,
+    /// Lowercase single tag, e.g. "thai". None = unknown (e.g. OSM entries
+    /// without a cuisine tag, free-form list items).
+    pub cuisine: Option<String>,
+    pub price_level: Option<u8>,
+    /// None = unrated, never 0.0.
+    pub rating: Option<f32>,
+    pub rating_count: Option<u32>,
+    /// May be empty when the provider has no address.
     pub address: String,
     pub photo_url: Option<String>,
-    pub lat: f64,
-    pub lng: f64,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
     /// None = hours unknown (e.g. pre-v2 rows, providers without hours data).
     #[serde(default)]
     pub hours: Option<Vec<HoursPeriod>>,
@@ -81,6 +84,9 @@ pub struct Room {
     pub params: RoomParams,
     pub created_by: Uuid,
     pub created_at: DateTime<Utc>,
+    /// Set when the room was created from a curated list (display only).
+    #[serde(default)]
+    pub source_list_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

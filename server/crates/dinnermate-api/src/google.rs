@@ -42,17 +42,19 @@ impl GooglePlacesProvider {
                 self.base_url, photo.name, self.api_key
             )
         });
+        // v3 Task1: mechanical Some-wrapping to keep v2 behavior (defaults
+        // for missing rating/price); honest None mapping is Task 4 work.
         Restaurant {
             id: place.id,
             name: place.display_name.text,
-            cuisine,
-            price_level: price_level_from_enum(place.price_level.as_deref()),
-            rating: place.rating.unwrap_or(0.0),
-            rating_count: place.user_rating_count.unwrap_or(0),
+            cuisine: Some(cuisine),
+            price_level: Some(price_level_from_enum(place.price_level.as_deref())),
+            rating: Some(place.rating.unwrap_or(0.0)),
+            rating_count: Some(place.user_rating_count.unwrap_or(0)),
             address: place.formatted_address.unwrap_or_default(),
             photo_url,
-            lat: place.location.latitude,
-            lng: place.location.longitude,
+            lat: Some(place.location.latitude),
+            lng: Some(place.location.longitude),
             hours: map_hours(place.regular_opening_hours),
             utc_offset_minutes: place.utc_offset_minutes,
         }
@@ -404,10 +406,11 @@ mod tests {
         let full = &restaurants[0];
         assert_eq!(full.id, "ChIJfull");
         assert_eq!(full.name, "Thai Palace");
-        assert_eq!(full.cuisine, "thai");
-        assert_eq!(full.price_level, 3);
-        assert_eq!(full.rating, 4.5);
-        assert_eq!(full.rating_count, 321);
+        // v3 Task1: expectations wrap in Some; honest None mapping is Task 4.
+        assert_eq!(full.cuisine.as_deref(), Some("thai"));
+        assert_eq!(full.price_level, Some(3));
+        assert_eq!(full.rating, Some(4.5));
+        assert_eq!(full.rating_count, Some(321));
         assert_eq!(full.address, "123 Main St, Salt Lake City, UT");
         assert_eq!(
             full.photo_url.as_deref(),
@@ -419,15 +422,15 @@ mod tests {
                 .as_str()
             )
         );
-        assert_eq!((full.lat, full.lng), (40.761, -111.891));
+        assert_eq!((full.lat, full.lng), (Some(40.761), Some(-111.891)));
 
         let sparse = &restaurants[1];
         assert_eq!(sparse.id, "ChIJsparse");
         assert_eq!(sparse.name, "Mystery Diner");
-        assert_eq!(sparse.cuisine, "restaurant");
-        assert_eq!(sparse.price_level, 2);
-        assert_eq!(sparse.rating, 0.0);
-        assert_eq!(sparse.rating_count, 0);
+        assert_eq!(sparse.cuisine.as_deref(), Some("restaurant"));
+        assert_eq!(sparse.price_level, Some(2));
+        assert_eq!(sparse.rating, Some(0.0));
+        assert_eq!(sparse.rating_count, Some(0));
         assert_eq!(sparse.address, "");
         assert_eq!(sparse.photo_url, None);
     }

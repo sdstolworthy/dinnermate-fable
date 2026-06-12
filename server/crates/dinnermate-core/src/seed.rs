@@ -124,23 +124,34 @@ mod tests {
         }
     }
 
+    /// Seed entries always carry full data: every now-optional field must be
+    /// `Some` and in range (the dataset predates optional restaurant data).
     #[test]
     fn every_entry_is_within_validation_ranges() {
         for r in seed_restaurants() {
-            assert!((1..=4).contains(&r.price_level), "{}: price {}", r.id, r.price_level);
-            assert!((0.0..=5.0).contains(&r.rating), "{}: rating {}", r.id, r.rating);
-            assert!((40.5..=41.0).contains(&r.lat), "{}: lat {}", r.id, r.lat);
-            assert!((-112.2..=-111.6).contains(&r.lng), "{}: lng {}", r.id, r.lng);
+            let price = r.price_level.unwrap_or_else(|| panic!("{}: price must be Some", r.id));
+            assert!((1..=4).contains(&price), "{}: price {}", r.id, price);
+            let rating = r.rating.unwrap_or_else(|| panic!("{}: rating must be Some", r.id));
+            assert!((0.0..=5.0).contains(&rating), "{}: rating {}", r.id, rating);
+            assert!(r.rating_count.is_some(), "{}: rating_count must be Some", r.id);
+            let lat = r.lat.unwrap_or_else(|| panic!("{}: lat must be Some", r.id));
+            assert!((40.5..=41.0).contains(&lat), "{}: lat {}", r.id, lat);
+            let lng = r.lng.unwrap_or_else(|| panic!("{}: lng must be Some", r.id));
+            assert!((-112.2..=-111.6).contains(&lng), "{}: lng {}", r.id, lng);
             assert!(!r.name.trim().is_empty(), "{}: empty name", r.id);
-            assert!(!r.cuisine.trim().is_empty(), "{}: empty cuisine", r.id);
+            let cuisine =
+                r.cuisine.as_deref().unwrap_or_else(|| panic!("{}: cuisine must be Some", r.id));
+            assert!(!cuisine.trim().is_empty(), "{}: empty cuisine", r.id);
             assert!(!r.address.trim().is_empty(), "{}: empty address", r.id);
         }
     }
 
     #[test]
     fn all_ten_expected_cuisines_are_present() {
-        let cuisines: HashSet<&str> =
-            seed_restaurants().iter().map(|r| r.cuisine.as_str()).collect();
+        let cuisines: HashSet<&str> = seed_restaurants()
+            .iter()
+            .filter_map(|r| r.cuisine.as_deref())
+            .collect();
         for cuisine in EXPECTED_CUISINES {
             assert!(cuisines.contains(cuisine), "missing cuisine {cuisine}");
         }
@@ -286,7 +297,10 @@ mod tests {
             .await
             .unwrap();
         assert!(!deck.is_empty());
-        assert!(deck.iter().all(|r| r.cuisine == "thai"), "non-thai entry in deck");
+        assert!(
+            deck.iter().all(|r| r.cuisine.as_deref() == Some("thai")),
+            "non-thai entry in deck"
+        );
     }
 
     #[tokio::test]

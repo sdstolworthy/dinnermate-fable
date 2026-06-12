@@ -5,6 +5,7 @@ pub mod error;
 pub mod filter;
 pub mod hours;
 pub mod model;
+pub mod osm_hours;
 pub mod provider;
 pub mod repo;
 pub mod seed;
@@ -18,6 +19,7 @@ pub use model::{
     HoursPeriod, List, ListItem, ListMembership, MatchEntry, Participant, ProviderDetails,
     Restaurant, Review, Room, RoomParams,
 };
+pub use osm_hours::parse_osm_opening_hours;
 pub use provider::RestaurantProvider;
 pub use repo::{DetailsCacheRepo, ListRepo, RoomRepo};
 pub use seed::SeedProvider;

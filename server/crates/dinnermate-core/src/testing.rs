@@ -22,18 +22,19 @@ use crate::provider::RestaurantProvider;
 use crate::repo::{DetailsCacheRepo, ListRepo, RoomRepo};
 
 /// Restaurant at the default test center (passes `valid_params` radius).
+/// Args stay required; they land in the model's `Option` fields as `Some`.
 pub fn restaurant(id: &str, name: &str, cuisine: &str, price: u8, rating: f32) -> Restaurant {
     Restaurant {
         id: id.into(),
         name: name.into(),
-        cuisine: cuisine.into(),
-        price_level: price,
-        rating,
-        rating_count: 100,
+        cuisine: Some(cuisine.into()),
+        price_level: Some(price),
+        rating: Some(rating),
+        rating_count: Some(100),
         address: "123 Main St".into(),
         photo_url: None,
-        lat: 40.7600,
-        lng: -111.8900,
+        lat: Some(40.7600),
+        lng: Some(-111.8900),
         hours: None,
         utc_offset_minutes: None,
     }

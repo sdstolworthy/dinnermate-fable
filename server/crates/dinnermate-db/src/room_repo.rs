@@ -54,22 +54,27 @@ impl From<RoomRow> for Room {
             },
             created_by: row.created_by,
             created_at: row.created_at,
+            // v3 Task1: column lands with migration 0003 (Task 3); not
+            // persisted yet.
+            source_list_name: None,
         }
     }
 }
 
+// v3 Task1: optional columns mirror the now-optional model fields; the DB
+// columns stay NOT NULL until migration 0003 (Task 3).
 #[derive(sqlx::FromRow)]
 struct RestaurantRow {
     restaurant_id: String,
     name: String,
-    cuisine: String,
-    price_level: i16,
-    rating: f32,
-    rating_count: i32,
+    cuisine: Option<String>,
+    price_level: Option<i16>,
+    rating: Option<f32>,
+    rating_count: Option<i32>,
     address: String,
     photo_url: Option<String>,
-    lat: f64,
-    lng: f64,
+    lat: Option<f64>,
+    lng: Option<f64>,
     hours: Option<Json<Vec<HoursPeriod>>>,
     utc_offset_minutes: Option<i32>,
 }
@@ -80,9 +85,9 @@ impl From<RestaurantRow> for Restaurant {
             id: row.restaurant_id,
             name: row.name,
             cuisine: row.cuisine,
-            price_level: row.price_level as u8,
+            price_level: row.price_level.map(|p| p as u8),
             rating: row.rating,
-            rating_count: row.rating_count as u32,
+            rating_count: row.rating_count.map(|c| c as u32),
             address: row.address,
             photo_url: row.photo_url,
             lat: row.lat,
@@ -161,9 +166,9 @@ impl RoomRepo for PgRoomRepo {
             .bind(position as i32)
             .bind(&restaurant.name)
             .bind(&restaurant.cuisine)
-            .bind(restaurant.price_level as i16)
+            .bind(restaurant.price_level.map(|p| p as i16))
             .bind(restaurant.rating)
-            .bind(restaurant.rating_count as i32)
+            .bind(restaurant.rating_count.map(|c| c as i32))
             .bind(&restaurant.address)
             .bind(&restaurant.photo_url)
             .bind(restaurant.lat)

@@ -52,6 +52,7 @@ impl RoomService {
                 params: input.params.clone(),
                 created_by: user_id,
                 created_at: Utc::now(),
+                source_list_name: None,
             };
             match self.repo.create(&room, &deck).await {
                 Ok(()) => return Ok((room, deck)),

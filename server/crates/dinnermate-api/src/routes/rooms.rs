@@ -94,18 +94,20 @@ impl From<HoursPeriod> for HoursPeriodDto {
     }
 }
 
+// v3 Task1: nullable fields mirror the model; openapi.yaml catches up in
+// Task 4.
 #[derive(Debug, Serialize)]
 pub struct RestaurantDto {
     pub id: String,
     pub name: String,
-    pub cuisine: String,
-    pub price_level: u8,
-    pub rating: f32,
-    pub rating_count: u32,
+    pub cuisine: Option<String>,
+    pub price_level: Option<u8>,
+    pub rating: Option<f32>,
+    pub rating_count: Option<u32>,
     pub address: String,
     pub photo_url: Option<String>,
-    pub lat: f64,
-    pub lng: f64,
+    pub lat: Option<f64>,
+    pub lng: Option<f64>,
     pub hours: Option<Vec<HoursPeriodDto>>,
     pub utc_offset_minutes: Option<i32>,
 }

@@ -11,20 +11,38 @@ pub fn haversine_m(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     2.0 * EARTH_RADIUS_M * a.sqrt().asin()
 }
 
-/// Filters a provider result down to the room's deck and orders it
-/// rating desc, then name asc, so all participants see the same deck.
+/// Filters a provider result down to the room's deck and orders it so all
+/// participants see the same deck.
+///
+/// Fairness rule: unknown passes. Each predicate only excludes a restaurant
+/// when the field is `Some` and fails; `None` (data the provider doesn't
+/// have) never disqualifies. Ordering: rated before unrated, rating desc
+/// within rated, then name asc.
 pub fn apply(params: &RoomParams, restaurants: Vec<Restaurant>) -> Vec<Restaurant> {
     let mut deck: Vec<Restaurant> = restaurants
         .into_iter()
         .filter(|r| {
             (params.cuisines.is_empty()
-                || params.cuisines.iter().any(|c| c.eq_ignore_ascii_case(&r.cuisine)))
-                && (params.price_min..=params.price_max).contains(&r.price_level)
-                && r.rating >= params.min_rating
-                && haversine_m(params.lat, params.lng, r.lat, r.lng) <= f64::from(params.radius_m)
+                || r.cuisine
+                    .as_ref()
+                    .is_none_or(|c| params.cuisines.iter().any(|p| p.eq_ignore_ascii_case(c))))
+                && r.price_level
+                    .is_none_or(|p| (params.price_min..=params.price_max).contains(&p))
+                && r.rating.is_none_or(|rating| rating >= params.min_rating)
+                && r.lat.zip(r.lng).is_none_or(|(lat, lng)| {
+                    haversine_m(params.lat, params.lng, lat, lng) <= f64::from(params.radius_m)
+                })
         })
         .collect();
-    deck.sort_by(|a, b| b.rating.total_cmp(&a.rating).then_with(|| a.name.cmp(&b.name)));
+    deck.sort_by(|a, b| {
+        match (a.rating, b.rating) {
+            (Some(ar), Some(br)) => br.total_cmp(&ar),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+        .then_with(|| a.name.cmp(&b.name))
+    });
     deck
 }
 
@@ -54,14 +72,32 @@ mod tests {
         Restaurant {
             id: id.into(),
             name: name.into(),
-            cuisine: cuisine.into(),
-            price_level: price,
-            rating,
-            rating_count: 100,
+            cuisine: Some(cuisine.into()),
+            price_level: Some(price),
+            rating: Some(rating),
+            rating_count: Some(100),
             address: "123 Main St".into(),
             photo_url: None,
-            lat: CENTER_LAT,
-            lng: CENTER_LNG,
+            lat: Some(CENTER_LAT),
+            lng: Some(CENTER_LNG),
+            hours: None,
+            utc_offset_minutes: None,
+        }
+    }
+
+    /// Restaurant with every optional field unknown.
+    fn unknown(id: &str, name: &str) -> Restaurant {
+        Restaurant {
+            id: id.into(),
+            name: name.into(),
+            cuisine: None,
+            price_level: None,
+            rating: None,
+            rating_count: None,
+            address: String::new(),
+            photo_url: None,
+            lat: None,
+            lng: None,
             hours: None,
             utc_offset_minutes: None,
         }
@@ -76,7 +112,7 @@ mod tests {
     #[test]
     fn apply_table() {
         let far = Restaurant {
-            lat: FAR_LAT,
+            lat: Some(FAR_LAT),
             ..restaurant("far", "Far Spot", "thai", 2, 4.0)
         };
         let cases: Vec<(&str, RoomParams, Vec<Restaurant>, Vec<&str>)> = vec![
@@ -146,5 +182,107 @@ mod tests {
             let got: Vec<String> = apply(&params, input).into_iter().map(|r| r.id).collect();
             assert_eq!(got, want_ids, "{name}");
         }
+    }
+
+    #[test]
+    fn unknown_passes_table() {
+        let cases: Vec<(&str, RoomParams, Vec<Restaurant>, Vec<&str>)> = vec![
+            (
+                "price None passes any window",
+                RoomParams { price_min: 2, price_max: 3, ..base_params() },
+                vec![
+                    Restaurant { price_level: None, ..restaurant("u", "Unknown", "thai", 2, 4.0) },
+                    restaurant("out", "Out", "thai", 4, 4.0),
+                ],
+                vec!["u"],
+            ),
+            (
+                "rating None passes min_rating 4",
+                RoomParams { min_rating: 4.0, ..base_params() },
+                vec![
+                    Restaurant { rating: None, ..restaurant("u", "Unknown", "thai", 2, 4.0) },
+                    restaurant("low", "Low", "thai", 2, 3.0),
+                ],
+                vec!["u"],
+            ),
+            (
+                "lat/lng None passes radius",
+                RoomParams { radius_m: 1_000, ..base_params() },
+                vec![
+                    Restaurant {
+                        lat: None,
+                        lng: None,
+                        ..restaurant("u", "Unknown", "thai", 2, 4.0)
+                    },
+                    Restaurant {
+                        lat: Some(FAR_LAT),
+                        ..restaurant("far", "Far", "thai", 2, 4.0)
+                    },
+                ],
+                vec!["u"],
+            ),
+            (
+                "cuisine None passes cuisine filter",
+                RoomParams { cuisines: vec!["thai".into()], ..base_params() },
+                vec![
+                    Restaurant { cuisine: None, ..restaurant("u", "Unknown", "thai", 2, 4.0) },
+                    restaurant("mex", "Mex", "mexican", 2, 4.0),
+                ],
+                vec!["u"],
+            ),
+            (
+                "all-unknown restaurant passes every filter",
+                RoomParams {
+                    cuisines: vec!["thai".into()],
+                    price_min: 2,
+                    price_max: 3,
+                    min_rating: 4.5,
+                    radius_m: 500,
+                    ..base_params()
+                },
+                vec![unknown("u", "Mystery")],
+                vec!["u"],
+            ),
+            (
+                "Some values still excluded correctly",
+                RoomParams {
+                    cuisines: vec!["thai".into()],
+                    price_min: 1,
+                    price_max: 2,
+                    min_rating: 4.0,
+                    radius_m: 1_000,
+                    ..base_params()
+                },
+                vec![
+                    restaurant("ok", "Ok", "thai", 2, 4.2),
+                    restaurant("cuisine", "Wrong Cuisine", "mexican", 2, 4.2),
+                    restaurant("price", "Too Pricey", "thai", 3, 4.2),
+                    restaurant("rating", "Too Low", "thai", 2, 3.9),
+                    Restaurant {
+                        lat: Some(FAR_LAT),
+                        ..restaurant("far", "Too Far", "thai", 2, 4.2)
+                    },
+                ],
+                vec!["ok"],
+            ),
+        ];
+        for (name, params, input, want_ids) in cases {
+            let got: Vec<String> = apply(&params, input).into_iter().map(|r| r.id).collect();
+            assert_eq!(got, want_ids, "{name}");
+        }
+    }
+
+    #[test]
+    fn ordering_puts_rated_before_unrated() {
+        let input = vec![
+            unknown("u-b", "Bistro Unknown"),
+            restaurant("zero", "Zero Star", "thai", 2, 0.0),
+            unknown("u-a", "Aardvark Cafe"),
+            restaurant("best", "Best", "thai", 2, 4.8),
+            restaurant("good", "Good", "thai", 2, 4.2),
+        ];
+        let got: Vec<String> = apply(&base_params(), input).into_iter().map(|r| r.id).collect();
+        // Rated first (desc, even a 0.0 rating beats unrated), then unrated name asc.
+        assert_eq!(got, vec!["best", "good", "zero", "u-a", "u-b"]);
     }
 }

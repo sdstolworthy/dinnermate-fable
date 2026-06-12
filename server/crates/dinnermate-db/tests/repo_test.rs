@@ -30,14 +30,14 @@ fn restaurant(id: &str, name: &str) -> Restaurant {
     Restaurant {
         id: id.into(),
         name: name.into(),
-        cuisine: "thai".into(),
-        price_level: 2,
-        rating: 4.2,
-        rating_count: 137,
+        cuisine: Some("thai".into()),
+        price_level: Some(2),
+        rating: Some(4.2),
+        rating_count: Some(137),
         address: "123 Main St".into(),
         photo_url: Some(format!("https://example.com/{id}.jpg")),
-        lat: 40.7601,
-        lng: -111.8902,
+        lat: Some(40.7601),
+        lng: Some(-111.8902),
         hours: None,
         utc_offset_minutes: None,
     }
@@ -60,6 +60,8 @@ fn room(code: &str) -> Room {
         },
         created_by: Uuid::new_v4(),
         created_at: now_micros(),
+        // v3 Task1: persisted from Task 3 (migration 0003) onward.
+        source_list_name: None,
     }
 }
 
