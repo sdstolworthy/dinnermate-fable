@@ -8,6 +8,7 @@ pub struct ConfigError(String);
 pub enum RestaurantProviderKind {
     Seed,
     Google,
+    Osm,
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,8 @@ pub struct Config {
     pub bind_addr: String,
     pub provider: RestaurantProviderKind,
     pub google_places_api_key: Option<String>,
+    /// Overpass endpoint override; None means the production default.
+    pub overpass_url: Option<String>,
     pub cors_allowed_origins: String,
 }
 
@@ -30,9 +33,10 @@ impl Config {
         let provider = match get("RESTAURANT_PROVIDER").as_deref() {
             None | Some("seed") => RestaurantProviderKind::Seed,
             Some("google") => RestaurantProviderKind::Google,
+            Some("osm") => RestaurantProviderKind::Osm,
             Some(other) => {
                 return Err(ConfigError(format!(
-                    "unknown RESTAURANT_PROVIDER {other:?} (expected \"seed\" or \"google\")"
+                    "unknown RESTAURANT_PROVIDER {other:?} (expected \"seed\", \"google\", or \"osm\")"
                 )))
             }
         };
@@ -48,6 +52,7 @@ impl Config {
             bind_addr,
             provider,
             google_places_api_key,
+            overpass_url: get("OVERPASS_URL"),
             cors_allowed_origins,
         })
     }

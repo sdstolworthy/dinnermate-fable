@@ -53,6 +53,50 @@ paths:
         '502':
           $ref: '#/components/responses/BadGateway'
 
+  /api/v1/rooms/from-list:
+    post:
+      tags: [rooms]
+      operationId: createRoomFromList
+      summary: Create a room whose deck is a curated list snapshot
+      description: >
+        Member-only. The deck is the list's items in list order (no provider
+        call, no filtering); items sourced from a provider keep that
+        restaurant id, free-form items get a synthetic `list-<item-uuid>` id.
+        The creator is NOT auto-joined; call join afterwards.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomFromListRequest'
+      responses:
+        '201':
+          description: Room created with the list-derived deck
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRoomResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '403':
+          description: Caller is not a member of the list (code NOT_LIST_MEMBER)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No list with that code (code LIST_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: The list has no items (code INVALID_PARAMS)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/rooms/{code}:
     get:
       tags: [rooms]
@@ -495,6 +539,7 @@ components:
         - price_max
         - min_rating
         - created_at
+        - source_list_name
       properties:
         id:
           type: string
@@ -527,6 +572,12 @@ components:
         created_at:
           type: string
           format: date-time
+        source_list_name:
+          type: [string, 'null']
+          description: >
+            Name of the list this room was created from (display only); null
+            for provider-search rooms. Params of list-rooms are synthesized
+            placeholders and not meaningful.
 
     HoursPeriod:
       type: object
@@ -567,33 +618,38 @@ components:
       properties:
         id:
           type: string
-          description: Provider-scoped id, e.g. "seed-001" or a Google place id.
+          description: >
+            Provider-scoped id, e.g. "seed-001", a Google place id,
+            "osm-node-123", or "list-<item-uuid>" for free-form list items.
         name:
           type: string
         cuisine:
-          type: string
-          description: Lowercase single tag, e.g. "thai".
+          type: [string, 'null']
+          description: Lowercase single tag, e.g. "thai"; null when unknown.
         price_level:
-          type: integer
+          type: [integer, 'null']
           minimum: 1
           maximum: 4
+          description: Null when unknown.
         rating:
-          type: number
+          type: [number, 'null']
           format: float
           minimum: 0
           maximum: 5
+          description: Null when unrated (never 0.0).
         rating_count:
-          type: integer
+          type: [integer, 'null']
           minimum: 0
         address:
           type: string
+          description: May be empty when the provider has no address.
         photo_url:
           type: [string, 'null']
         lat:
-          type: number
+          type: [number, 'null']
           format: double
         lng:
-          type: number
+          type: [number, 'null']
           format: double
         hours:
           oneOf:
@@ -682,7 +738,7 @@ components:
 
     GetRoomResponse:
       type: object
-      required: [room, deck, me]
+      required: [room, deck, me, participants]
       properties:
         room:
           $ref: '#/components/schemas/Room'
@@ -695,6 +751,27 @@ components:
             - $ref: '#/components/schemas/Participant'
             - type: 'null'
           description: The caller's participant if they have joined, else null.
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParticipantName'
+          description: Everyone who joined the room, ordered by joined_at asc.
+
+    ParticipantName:
+      type: object
+      required: [display_name]
+      properties:
+        display_name:
+          type: string
+
+    CreateRoomFromListRequest:
+      type: object
+      required: [list_code]
+      properties:
+        list_code:
+          $ref: '#/components/schemas/ShareCode'
+        name:
+          type: [string, 'null']
 
     JoinRequest:
       type: object

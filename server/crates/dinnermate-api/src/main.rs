@@ -1,11 +1,31 @@
 use std::error::Error;
 use std::sync::Arc;
 
+use chrono::Utc;
 use dinnermate_api::config::{Config, RestaurantProviderKind};
 use dinnermate_api::google::{GooglePlacesProvider, GOOGLE_PLACES_BASE_URL};
+use dinnermate_api::osm::{OsmProvider, OVERPASS_BASE_URL};
 use dinnermate_api::server::{build_router, cors_layer, AppState};
-use dinnermate_core::{ListService, RestaurantProvider, RoomService, SeedProvider};
+use dinnermate_core::{ListService, RestaurantProvider, RoomRepo, RoomService, SeedProvider};
 use dinnermate_db::{connect_and_migrate, PgDetailsCacheRepo, PgListRepo, PgRoomRepo};
+
+const ROOM_TTL_DAYS: i64 = 30;
+const EXPIRY_SWEEP_INTERVAL: std::time::Duration = std::time::Duration::from_secs(6 * 60 * 60);
+
+/// Deletes rooms older than the TTL every six hours (first sweep immediately
+/// on boot). Deck, participants, and swipes cascade in the database.
+fn spawn_room_expiry(repo: Arc<dyn RoomRepo>) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(EXPIRY_SWEEP_INTERVAL);
+        loop {
+            interval.tick().await;
+            match repo.delete_older_than(Utc::now() - chrono::Duration::days(ROOM_TTL_DAYS)).await {
+                Ok(deleted) => tracing::info!(deleted, "expired rooms cleaned"),
+                Err(err) => tracing::error!(error = %err, "room expiry sweep failed"),
+            }
+        }
+    });
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -29,11 +49,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 GOOGLE_PLACES_BASE_URL.to_string(),
             ))
         }
+        RestaurantProviderKind::Osm => Arc::new(OsmProvider::new(
+            reqwest::Client::new(),
+            config
+                .overpass_url
+                .clone()
+                .unwrap_or_else(|| OVERPASS_BASE_URL.to_string()),
+        )),
     };
+
+    let room_repo = Arc::new(PgRoomRepo::new(pool.clone()));
+    spawn_room_expiry(room_repo.clone());
 
     let state = AppState {
         rooms: Arc::new(RoomService::new(
-            Arc::new(PgRoomRepo::new(pool.clone())),
+            room_repo,
             provider,
             Arc::new(PgDetailsCacheRepo::new(pool.clone())),
         )),

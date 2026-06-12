@@ -4,7 +4,8 @@ use axum::Json;
 use chrono::{DateTime, Utc};
 use dinnermate_core::service::CreateRoom;
 use dinnermate_core::{
-    CoreError, HoursPeriod, MatchEntry, Participant, Restaurant, Review, Room, RoomParams,
+    deck_from_items, CoreError, HoursPeriod, MatchEntry, Participant, Restaurant, Review, Room,
+    RoomParams,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -13,6 +14,12 @@ use uuid::Uuid;
 use crate::error::ApiError;
 use crate::extract::UserId;
 use crate::server::AppState;
+
+#[derive(Debug, Deserialize)]
+pub struct CreateRoomFromListRequest {
+    pub list_code: String,
+    pub name: Option<String>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct CreateRoomRequest {
@@ -60,6 +67,7 @@ pub struct RoomDto {
     pub price_max: u8,
     pub min_rating: f32,
     pub created_at: DateTime<Utc>,
+    pub source_list_name: Option<String>,
 }
 
 impl From<Room> for RoomDto {
@@ -77,6 +85,7 @@ impl From<Room> for RoomDto {
             price_max: room.params.price_max,
             min_rating: room.params.min_rating,
             created_at: room.created_at,
+            source_list_name: room.source_list_name,
         }
     }
 }
@@ -94,8 +103,6 @@ impl From<HoursPeriod> for HoursPeriodDto {
     }
 }
 
-// v3 Task1: nullable fields mirror the model; openapi.yaml catches up in
-// Task 4.
 #[derive(Debug, Serialize)]
 pub struct RestaurantDto {
     pub id: String,
@@ -150,6 +157,18 @@ impl From<Participant> for ParticipantDto {
     }
 }
 
+/// Public view of a participant in room responses: display name only, no ids.
+#[derive(Debug, Serialize)]
+pub struct ParticipantNameDto {
+    pub display_name: String,
+}
+
+impl From<Participant> for ParticipantNameDto {
+    fn from(p: Participant) -> Self {
+        ParticipantNameDto { display_name: p.display_name }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct JoinRequest {
     pub display_name: String,
@@ -195,6 +214,7 @@ pub struct GetRoomResponse {
     pub room: RoomDto,
     pub deck: Vec<RestaurantDto>,
     pub me: Option<ParticipantDto>,
+    pub participants: Vec<ParticipantNameDto>,
 }
 
 #[derive(Debug, Serialize)]
@@ -244,16 +264,35 @@ pub async fn create(
     Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// POST /rooms/from-list: a room whose deck is a curated list snapshot.
+/// Member-only — the list code is shared more widely than its membership.
+pub async fn create_from_list(
+    State(state): State<AppState>,
+    UserId(user): UserId,
+    Json(body): Json<CreateRoomFromListRequest>,
+) -> Result<(StatusCode, Json<CreateRoomResponse>), ApiError> {
+    let (list, items, is_member, _) = state.lists.get(&body.list_code, user).await?;
+    if !is_member {
+        return Err(CoreError::NotListMember.into());
+    }
+    let deck = deck_from_items(&items);
+    let (room, deck) = state.rooms.create_with_deck(user, body.name, &list.name, deck).await?;
+    let response = CreateRoomResponse { room: room.into(), deck: to_deck(deck) };
+    Ok((StatusCode::CREATED, Json(response)))
+}
+
 pub async fn get(
     State(state): State<AppState>,
     UserId(user): UserId,
     Path(code): Path<String>,
 ) -> Result<Json<GetRoomResponse>, ApiError> {
     let (room, deck, me) = state.rooms.get_room(&code, user).await?;
+    let participants = state.rooms.participants(&code).await?;
     Ok(Json(GetRoomResponse {
         room: room.into(),
         deck: to_deck(deck),
         me: me.map(Into::into),
+        participants: participants.into_iter().map(Into::into).collect(),
     }))
 }
 

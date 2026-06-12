@@ -531,6 +531,177 @@ async fn list_flow() {
     assert_eq!(theirs["lists"], json!([]), "non-member must see an empty list array");
 }
 
+/// Adds an item with an arbitrary JSON body, asserting 201, and returns the
+/// created item.
+async fn add_list_item_json(app: &Router, code: &str, user: Uuid, body: Value) -> Value {
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::POST,
+            &format!("/api/v1/lists/{code}/items"),
+            Some(user),
+            Some(body),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    json_body(response).await["item"].clone()
+}
+
+async fn post_from_list(app: &Router, user: Uuid, body: Value) -> Response<Body> {
+    app.clone()
+        .oneshot(req(Method::POST, "/api/v1/rooms/from-list", Some(user), Some(body)))
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn from_list_flow() {
+    let app = router().await;
+    let owner = Uuid::new_v4();
+    let list_code = create_list(&app, owner, "Faves").await;
+    let free_form = add_list_item_json(&app, &list_code, owner, json!({"name": "Mom's Tacos"})).await;
+    let free_form_deck_id = format!("list-{}", free_form["id"].as_str().unwrap());
+    add_list_item_json(
+        &app,
+        &list_code,
+        owner,
+        json!({"name": "Curry House", "cuisine": "indian", "source_restaurant_id": "seed-002"}),
+    )
+    .await;
+
+    let response =
+        post_from_list(&app, owner, json!({"list_code": list_code, "name": "Date Night"})).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = json_body(response).await;
+    let room_code = body["room"]["code"].as_str().unwrap().to_string();
+    assert_eq!(room_code.len(), 6);
+    assert_eq!(body["room"]["name"], json!("Date Night"));
+    assert_eq!(body["room"]["source_list_name"], json!("Faves"), "body {body}");
+    let ids: Vec<&str> = body["deck"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        ids,
+        [free_form_deck_id.as_str(), "seed-002"],
+        "deck must preserve list order with list-/source ids"
+    );
+
+    // The list-room behaves like any other room: join, swipe, matches.
+    let (alice, bob) = (Uuid::new_v4(), Uuid::new_v4());
+    join(&app, &room_code, alice, "Alice").await;
+    join(&app, &room_code, bob, "Bob").await;
+    swipe(&app, &room_code, alice, &free_form_deck_id, true).await;
+    swipe(&app, &room_code, bob, &free_form_deck_id, true).await;
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/rooms/{room_code}/matches"), Some(alice), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let matches_body = json_body(response).await;
+    let matches = matches_body["matches"].as_array().unwrap();
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0]["restaurant"]["id"], json!(free_form_deck_id));
+    assert_eq!(matches[0]["like_count"], json!(2));
+
+    // Details on a free-form list- id: 200 from the snapshot, null extras.
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::GET,
+            &format!("/api/v1/rooms/{room_code}/restaurants/{free_form_deck_id}/details"),
+            Some(alice),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let details = json_body(response).await;
+    assert_eq!(details["restaurant"]["id"], json!(free_form_deck_id));
+    assert_eq!(details["restaurant"]["name"], json!("Mom's Tacos"));
+    for field in ["cuisine", "price_level", "rating", "rating_count", "lat", "lng"] {
+        assert_eq!(details["restaurant"][field], json!(null), "{field} must be null: {details}");
+    }
+    for field in ["website", "phone", "maps_url"] {
+        assert_eq!(details[field], json!(null), "{field} must be null: {details}");
+    }
+    assert_eq!(details["reviews"], json!([]));
+
+    // Provider-sourced ids keep the normal details path.
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::GET,
+            &format!("/api/v1/rooms/{room_code}/restaurants/seed-002/details"),
+            Some(alice),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(json_body(response).await["restaurant"]["id"], json!("seed-002"));
+}
+
+#[tokio::test]
+async fn from_list_non_member() {
+    let app = router().await;
+    let list_code = create_list(&app, Uuid::new_v4(), "Members only").await;
+    let response = post_from_list(&app, Uuid::new_v4(), json!({"list_code": list_code})).await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_eq!(json_body(response).await["error"]["code"], json!("NOT_LIST_MEMBER"));
+}
+
+#[tokio::test]
+async fn from_list_unknown_list() {
+    let app = router().await;
+    let response = post_from_list(&app, Uuid::new_v4(), json!({"list_code": "ZZZZZZ"})).await;
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(json_body(response).await["error"]["code"], json!("LIST_NOT_FOUND"));
+}
+
+#[tokio::test]
+async fn from_list_empty_list() {
+    let app = router().await;
+    let owner = Uuid::new_v4();
+    let list_code = create_list(&app, owner, "Empty").await;
+    let response = post_from_list(&app, owner, json!({"list_code": list_code})).await;
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body = json_body(response).await;
+    assert_eq!(body["error"]["code"], json!("INVALID_PARAMS"));
+    assert_eq!(body["error"]["message"], json!("list has no items"));
+}
+
+#[tokio::test]
+async fn room_response_carries_participants() {
+    let app = router().await;
+    let (code, _) = create_room(&app).await;
+    let (alice, bob) = (Uuid::new_v4(), Uuid::new_v4());
+    join(&app, &code, alice, "Alice").await;
+    join(&app, &code, bob, "Bob").await;
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/rooms/{code}"), Some(alice), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_body(response).await;
+    assert_eq!(
+        body["participants"],
+        json!([{"display_name": "Alice"}, {"display_name": "Bob"}]),
+        "participants in joined_at order, body {body}"
+    );
+    assert_eq!(
+        body["room"]["source_list_name"],
+        json!(null),
+        "search-rooms carry a null source_list_name, body {body}"
+    );
+}
+
 #[tokio::test]
 async fn healthz_no_auth() {
     let app = router().await;

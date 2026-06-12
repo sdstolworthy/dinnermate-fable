@@ -42,15 +42,13 @@ impl GooglePlacesProvider {
                 self.base_url, photo.name, self.api_key
             )
         });
-        // v3 Task1: mechanical Some-wrapping to keep v2 behavior (defaults
-        // for missing rating/price); honest None mapping is Task 4 work.
         Restaurant {
             id: place.id,
             name: place.display_name.text,
             cuisine: Some(cuisine),
-            price_level: Some(price_level_from_enum(place.price_level.as_deref())),
-            rating: Some(place.rating.unwrap_or(0.0)),
-            rating_count: Some(place.user_rating_count.unwrap_or(0)),
+            price_level: price_level_from_enum(place.price_level.as_deref()),
+            rating: place.rating,
+            rating_count: place.user_rating_count,
             address: place.formatted_address.unwrap_or_default(),
             photo_url,
             lat: Some(place.location.latitude),
@@ -100,15 +98,15 @@ async fn read_success_body(response: reqwest::Response) -> Result<String, Provid
     Ok(text)
 }
 
-/// Google omits `priceLevel` for many places; treat missing/unspecified/free
-/// as mid-range so the price filter doesn't silently drop them.
-fn price_level_from_enum(value: Option<&str>) -> u8 {
-    match value {
-        Some("PRICE_LEVEL_INEXPENSIVE") => 1,
-        Some("PRICE_LEVEL_MODERATE") => 2,
-        Some("PRICE_LEVEL_EXPENSIVE") => 3,
-        Some("PRICE_LEVEL_VERY_EXPENSIVE") => 4,
-        _ => 2,
+/// Google omits `priceLevel` for many places; missing or unrecognized values
+/// stay `None`, and the unknown-passes filter keeps those places.
+fn price_level_from_enum(value: Option<&str>) -> Option<u8> {
+    match value? {
+        "PRICE_LEVEL_INEXPENSIVE" => Some(1),
+        "PRICE_LEVEL_MODERATE" => Some(2),
+        "PRICE_LEVEL_EXPENSIVE" => Some(3),
+        "PRICE_LEVEL_VERY_EXPENSIVE" => Some(4),
+        _ => None,
     }
 }
 
@@ -396,7 +394,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn maps_places_response_with_defaults_for_missing_fields() {
+    async fn maps_places_response_keeping_missing_fields_unknown() {
         let stub = spawn_stub(StatusCode::OK, &canned_two_places()).await;
 
         let restaurants = provider(&stub.base_url).search(&params()).await.unwrap();
@@ -406,7 +404,6 @@ mod tests {
         let full = &restaurants[0];
         assert_eq!(full.id, "ChIJfull");
         assert_eq!(full.name, "Thai Palace");
-        // v3 Task1: expectations wrap in Some; honest None mapping is Task 4.
         assert_eq!(full.cuisine.as_deref(), Some("thai"));
         assert_eq!(full.price_level, Some(3));
         assert_eq!(full.rating, Some(4.5));
@@ -428,9 +425,9 @@ mod tests {
         assert_eq!(sparse.id, "ChIJsparse");
         assert_eq!(sparse.name, "Mystery Diner");
         assert_eq!(sparse.cuisine.as_deref(), Some("restaurant"));
-        assert_eq!(sparse.price_level, Some(2));
-        assert_eq!(sparse.rating, Some(0.0));
-        assert_eq!(sparse.rating_count, Some(0));
+        assert_eq!(sparse.price_level, None, "missing priceLevel stays unknown");
+        assert_eq!(sparse.rating, None, "missing rating stays unknown, never 0.0");
+        assert_eq!(sparse.rating_count, None);
         assert_eq!(sparse.address, "");
         assert_eq!(sparse.photo_url, None);
     }

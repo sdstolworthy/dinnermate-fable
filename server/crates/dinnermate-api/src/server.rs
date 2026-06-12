@@ -34,6 +34,7 @@ pub fn cors_layer(allowed_origins: &str) -> Result<CorsLayer, axum::http::header
 pub fn build_router(state: AppState, cors: CorsLayer) -> Router {
     let api = Router::new()
         .route("/rooms", post(rooms::create))
+        .route("/rooms/from-list", post(rooms::create_from_list))
         .route("/rooms/{code}", get(rooms::get))
         .route("/rooms/{code}/join", post(rooms::join))
         .route("/rooms/{code}/swipes", post(rooms::swipe))
