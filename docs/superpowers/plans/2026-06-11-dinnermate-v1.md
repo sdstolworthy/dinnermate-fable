@@ -227,10 +227,10 @@ Workspace deps (pin in `[workspace.dependencies]`): axum 0.8 (macros), tokio 1 (
 
 **Files:** Create `crates/dinnermate-core/src/{lib.rs,model.rs,error.rs,code.rs,provider.rs,filter.rs}`; tests inline `#[cfg(test)]`.
 
-- [ ] Write table-driven tests first: `RoomParams::validate` (radius bounds, price ordering, rating range, lat/lng range — each case one assertion), `generate_code` (length 6, alphabet-only, deterministic with seeded `StdRng`), `filter::apply(params, restaurants)` (cuisine empty=all, cuisine match, price window, min_rating, haversine radius cut, stable ordering by rating desc then name)
-- [ ] Run: `cargo test -p dinnermate-core` → FAIL (unimplemented)
-- [ ] Implement model.rs (types above), error.rs, code.rs, provider.rs (trait + ProviderError), filter.rs (haversine + predicate chain)
-- [ ] `cargo test -p dinnermate-core` → PASS; commit `feat(core): domain types, validation, code gen, deck filter`
+- [x] Write table-driven tests first: `RoomParams::validate` (radius bounds, price ordering, rating range, lat/lng range — each case one assertion), `generate_code` (length 6, alphabet-only, deterministic with seeded `StdRng`), `filter::apply(params, restaurants)` (cuisine empty=all, cuisine match, price window, min_rating, haversine radius cut, stable ordering by rating desc then name)
+- [x] Run: `cargo test -p dinnermate-core` → FAIL (unimplemented)
+- [x] Implement model.rs (types above), error.rs, code.rs, provider.rs (trait + ProviderError), filter.rs (haversine + predicate chain)
+- [x] `cargo test -p dinnermate-core` → PASS; commit `feat(core): domain types, validation, code gen, deck filter`
 
 ## Task 2: dinnermate-core — services with fake repos
 
