@@ -34,6 +34,7 @@ struct RoomRow {
     min_rating: f32,
     created_by: Uuid,
     created_at: DateTime<Utc>,
+    source_list_name: Option<String>,
 }
 
 impl From<RoomRow> for Room {
@@ -54,15 +55,11 @@ impl From<RoomRow> for Room {
             },
             created_by: row.created_by,
             created_at: row.created_at,
-            // v3 Task1: column lands with migration 0003 (Task 3); not
-            // persisted yet.
-            source_list_name: None,
+            source_list_name: row.source_list_name,
         }
     }
 }
 
-// v3 Task1: optional columns mirror the now-optional model fields; the DB
-// columns stay NOT NULL until migration 0003 (Task 3).
 #[derive(sqlx::FromRow)]
 struct RestaurantRow {
     restaurant_id: String,
@@ -71,7 +68,8 @@ struct RestaurantRow {
     price_level: Option<i16>,
     rating: Option<f32>,
     rating_count: Option<i32>,
-    address: String,
+    // Nullable in the DB since migration 0003; the model keeps String, NULL→"".
+    address: Option<String>,
     photo_url: Option<String>,
     lat: Option<f64>,
     lng: Option<f64>,
@@ -88,7 +86,7 @@ impl From<RestaurantRow> for Restaurant {
             price_level: row.price_level.map(|p| p as u8),
             rating: row.rating,
             rating_count: row.rating_count.map(|c| c as u32),
-            address: row.address,
+            address: row.address.unwrap_or_default(),
             photo_url: row.photo_url,
             lat: row.lat,
             lng: row.lng,
@@ -134,8 +132,9 @@ impl RoomRepo for PgRoomRepo {
 
         sqlx::query(
             "INSERT INTO rooms (id, code, name, location_lat, location_lng, location_label, \
-             radius_m, cuisines, price_min, price_max, min_rating, created_by, created_at) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
+             radius_m, cuisines, price_min, price_max, min_rating, created_by, created_at, \
+             source_list_name) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
         )
         .bind(room.id)
         .bind(&room.code)
@@ -150,6 +149,7 @@ impl RoomRepo for PgRoomRepo {
         .bind(room.params.min_rating)
         .bind(room.created_by)
         .bind(room.created_at)
+        .bind(&room.source_list_name)
         .execute(&mut *tx)
         .await
         .map_err(into_repo_error)?;
@@ -292,7 +292,6 @@ impl RoomRepo for PgRoomRepo {
             .map_err(into_repo_error)
     }
 
-    // v3 Task3 tests this
     async fn delete_older_than(&self, cutoff: DateTime<Utc>) -> Result<u64, RepoError> {
         let result = sqlx::query("DELETE FROM rooms WHERE created_at < $1")
             .bind(cutoff)
@@ -302,7 +301,6 @@ impl RoomRepo for PgRoomRepo {
         Ok(result.rows_affected())
     }
 
-    // v3 Task3 tests this
     async fn participants(&self, room_id: Uuid) -> Result<Vec<Participant>, RepoError> {
         let rows: Vec<ParticipantRow> = sqlx::query_as(
             "SELECT * FROM participants WHERE room_id = $1 ORDER BY joined_at ASC",

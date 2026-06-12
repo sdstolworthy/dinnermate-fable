@@ -1,0 +1,9 @@
+ALTER TABLE room_restaurants
+    ALTER COLUMN cuisine DROP NOT NULL,
+    ALTER COLUMN price_level DROP NOT NULL,
+    ALTER COLUMN rating DROP NOT NULL,
+    ALTER COLUMN rating_count DROP NOT NULL,
+    ALTER COLUMN address DROP NOT NULL,
+    ALTER COLUMN lat DROP NOT NULL,
+    ALTER COLUMN lng DROP NOT NULL;
+ALTER TABLE rooms ADD COLUMN source_list_name TEXT;

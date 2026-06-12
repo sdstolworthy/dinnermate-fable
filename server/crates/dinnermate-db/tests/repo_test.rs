@@ -60,7 +60,6 @@ fn room(code: &str) -> Room {
         },
         created_by: Uuid::new_v4(),
         created_at: now_micros(),
-        // v3 Task1: persisted from Task 3 (migration 0003) onward.
         source_list_name: None,
     }
 }
@@ -383,6 +382,201 @@ async fn matches_carry_hours_and_utc_offset() {
     let matches = repo.matches(room.id).await.expect("matches");
     assert_eq!(matches.len(), 1);
     assert_eq!(matches[0].restaurant, liked);
+}
+
+/// A restaurant with only the always-present fields: id and name.
+/// Everything optional is None and address is "" (the model keeps String).
+fn minimal_restaurant(id: &str, name: &str) -> Restaurant {
+    Restaurant {
+        id: id.into(),
+        name: name.into(),
+        cuisine: None,
+        price_level: None,
+        rating: None,
+        rating_count: None,
+        address: String::new(),
+        photo_url: None,
+        lat: None,
+        lng: None,
+        hours: None,
+        utc_offset_minutes: None,
+    }
+}
+
+#[tokio::test]
+async fn all_none_restaurant_roundtrips_and_appears_in_matches() {
+    let repo = PgRoomRepo::new(pool().await);
+    let room = room(&unique_code());
+    let minimal = minimal_restaurant("list-abc", "Mystery Spot");
+
+    repo.create(&room, std::slice::from_ref(&minimal))
+        .await
+        .expect("create room");
+    let (_, found_deck) = repo
+        .find_by_code(&room.code)
+        .await
+        .expect("find_by_code")
+        .expect("room should exist");
+    assert_eq!(found_deck, vec![minimal.clone()]);
+
+    let participant = repo
+        .join(room.id, Uuid::new_v4(), "Eve")
+        .await
+        .expect("join");
+    repo.record_swipe(room.id, participant.id, "list-abc", true)
+        .await
+        .expect("swipe");
+    let matches = repo.matches(room.id).await.expect("matches");
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].restaurant, minimal);
+}
+
+#[tokio::test]
+async fn null_address_in_db_reads_back_as_empty_string() {
+    let db = pool().await;
+    let repo = PgRoomRepo::new(db.clone());
+    let room = room(&unique_code());
+    repo.create(&room, &[restaurant("r-null-addr", "No Fixed Abode")])
+        .await
+        .expect("create room");
+
+    sqlx::query("UPDATE room_restaurants SET address = NULL WHERE room_id = $1")
+        .bind(room.id)
+        .execute(&db)
+        .await
+        .expect("null out address");
+
+    let (_, deck) = repo
+        .find_by_code(&room.code)
+        .await
+        .expect("find_by_code")
+        .expect("room should exist");
+    assert_eq!(deck[0].address, "");
+}
+
+#[tokio::test]
+async fn room_source_list_name_roundtrips() {
+    let repo = PgRoomRepo::new(pool().await);
+    let with_list = Room {
+        source_list_name: Some("Date Night Favorites".into()),
+        ..room(&unique_code())
+    };
+
+    repo.create(&with_list, &[restaurant("r-1", "One")])
+        .await
+        .expect("create room");
+    let (found, _) = repo
+        .find_by_code(&with_list.code)
+        .await
+        .expect("find_by_code")
+        .expect("room should exist");
+
+    assert_eq!(found.source_list_name, Some("Date Night Favorites".into()));
+    assert_eq!(found, with_list);
+}
+
+#[tokio::test]
+async fn delete_older_than_removes_expired_rooms_and_cascades() {
+    let db = pool().await;
+    let repo = PgRoomRepo::new(db.clone());
+
+    let old_room = room(&unique_code());
+    repo.create(&old_room, &[restaurant("r-old", "Old Place")])
+        .await
+        .expect("create old room");
+    let old_participant = repo
+        .join(old_room.id, Uuid::new_v4(), "Olive")
+        .await
+        .expect("join old");
+    repo.record_swipe(old_room.id, old_participant.id, "r-old", true)
+        .await
+        .expect("swipe old");
+
+    let fresh_room = room(&unique_code());
+    repo.create(&fresh_room, &[restaurant("r-fresh", "Fresh Place")])
+        .await
+        .expect("create fresh room");
+    let fresh_participant = repo
+        .join(fresh_room.id, Uuid::new_v4(), "Fern")
+        .await
+        .expect("join fresh");
+    repo.record_swipe(fresh_room.id, fresh_participant.id, "r-fresh", true)
+        .await
+        .expect("swipe fresh");
+
+    sqlx::query("UPDATE rooms SET created_at = now() - interval '31 days' WHERE id = $1")
+        .bind(old_room.id)
+        .execute(&db)
+        .await
+        .expect("backdate old room");
+
+    let deleted = repo
+        .delete_older_than(Utc::now() - Duration::days(30))
+        .await
+        .expect("delete_older_than");
+    assert_eq!(deleted, 1);
+
+    assert!(repo
+        .find_by_code(&old_room.code)
+        .await
+        .expect("find old")
+        .is_none());
+    for (table, count_expected) in [
+        ("room_restaurants", 0i64),
+        ("participants", 0),
+        ("swipes", 0),
+    ] {
+        let count: i64 =
+            sqlx::query_scalar(&format!("SELECT count(*) FROM {table} WHERE room_id = $1"))
+                .bind(old_room.id)
+                .fetch_one(&db)
+                .await
+                .expect("count cascaded rows");
+        assert_eq!(count, count_expected, "{table} should be empty");
+    }
+
+    let (found_fresh, fresh_deck) = repo
+        .find_by_code(&fresh_room.code)
+        .await
+        .expect("find fresh")
+        .expect("fresh room intact");
+    assert_eq!(found_fresh, fresh_room);
+    assert_eq!(fresh_deck.len(), 1);
+    let fresh_matches = repo.matches(fresh_room.id).await.expect("fresh matches");
+    assert_eq!(fresh_matches.len(), 1);
+    assert_eq!(
+        repo.participant_count(fresh_room.id)
+            .await
+            .expect("participant_count"),
+        1
+    );
+}
+
+#[tokio::test]
+async fn participants_returned_in_joined_at_order() {
+    let db = pool().await;
+    let repo = PgRoomRepo::new(db.clone());
+    let room = room(&unique_code());
+    repo.create(&room, &[restaurant("r-1", "One")])
+        .await
+        .expect("create room");
+
+    // Bob joins first; Alice is then backdated to before Bob so the expected
+    // order can only come from joined_at, not insertion order.
+    repo.join(room.id, Uuid::new_v4(), "Bob").await.expect("join Bob");
+    let alice = repo
+        .join(room.id, Uuid::new_v4(), "Alice")
+        .await
+        .expect("join Alice");
+    sqlx::query("UPDATE participants SET joined_at = joined_at - interval '1 hour' WHERE id = $1")
+        .bind(alice.id)
+        .execute(&db)
+        .await
+        .expect("backdate Alice");
+
+    let participants = repo.participants(room.id).await.expect("participants");
+    let names: Vec<&str> = participants.iter().map(|p| p.display_name.as_str()).collect();
+    assert_eq!(names, vec!["Alice", "Bob"]);
 }
 
 fn provider_details(website: &str) -> ProviderDetails {
