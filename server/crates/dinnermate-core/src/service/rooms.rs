@@ -44,18 +44,63 @@ impl RoomService {
                 "no restaurants match these filters".to_string(),
             ));
         }
+        let room = self
+            .create_with_fresh_code(user_id, input.name, input.params, None, &deck)
+            .await?;
+        Ok((room, deck))
+    }
+
+    /// Creates a room whose deck is a curated list snapshot instead of a
+    /// provider search. Stored params are synthesized placeholders (valid per
+    /// `RoomParams::validate`, never used for filtering).
+    pub async fn create_with_deck(
+        &self,
+        user_id: Uuid,
+        name: Option<String>,
+        source_list_name: &str,
+        deck: Vec<Restaurant>,
+    ) -> Result<(Room, Vec<Restaurant>), CoreError> {
+        if deck.is_empty() {
+            return Err(CoreError::InvalidParams("list has no items".to_string()));
+        }
+        let params = RoomParams {
+            lat: 0.0,
+            lng: 0.0,
+            location_label: source_list_name.to_string(),
+            radius_m: 1000,
+            cuisines: vec![],
+            price_min: 1,
+            price_max: 4,
+            min_rating: 0.0,
+        };
+        let room = self
+            .create_with_fresh_code(user_id, name, params, Some(source_list_name.to_string()), &deck)
+            .await?;
+        Ok((room, deck))
+    }
+
+    /// Persists the room, regenerating the code on collision up to
+    /// `MAX_CODE_ATTEMPTS` times.
+    async fn create_with_fresh_code(
+        &self,
+        user_id: Uuid,
+        name: Option<String>,
+        params: RoomParams,
+        source_list_name: Option<String>,
+        deck: &[Restaurant],
+    ) -> Result<Room, CoreError> {
         for _ in 0..MAX_CODE_ATTEMPTS {
             let room = Room {
                 id: Uuid::new_v4(),
                 code: generate_code(&mut rand::rng()),
-                name: input.name.clone(),
-                params: input.params.clone(),
+                name: name.clone(),
+                params: params.clone(),
                 created_by: user_id,
                 created_at: Utc::now(),
-                source_list_name: None,
+                source_list_name: source_list_name.clone(),
             };
-            match self.repo.create(&room, &deck).await {
-                Ok(()) => return Ok((room, deck)),
+            match self.repo.create(&room, deck).await {
+                Ok(()) => return Ok(room),
                 Err(RepoError::Conflict) => continue,
                 Err(err) => return Err(err.into()),
             }
@@ -115,6 +160,12 @@ impl RoomService {
             })
     }
 
+    /// Everyone who joined the room, joined_at asc.
+    pub async fn participants(&self, code: &str) -> Result<Vec<Participant>, CoreError> {
+        let (room, _) = self.find_room(code).await?;
+        Ok(self.repo.participants(room.id).await?)
+    }
+
     pub async fn matches(&self, code: &str) -> Result<(Vec<MatchEntry>, i64), CoreError> {
         let (room, _) = self.find_room(code).await?;
         let entries = self.repo.matches(room.id).await?;
@@ -137,6 +188,12 @@ impl RoomService {
             .into_iter()
             .find(|r| r.id == restaurant_id)
             .ok_or(CoreError::UnknownRestaurant)?;
+
+        // Free-form list items have no provider behind them; the deck
+        // snapshot is all there is.
+        if restaurant_id.starts_with("list-") {
+            return Ok((restaurant, ProviderDetails::default()));
+        }
 
         let cached = self.cache.get(restaurant_id).await?;
         if let Some((details, fetched_at)) = &cached {
@@ -429,6 +486,160 @@ mod tests {
         let (_, _, service) = details_service(default_deck());
         let err =
             service.restaurant_details("NOSUCH", Uuid::new_v4(), "r1").await.unwrap_err();
+        assert!(matches!(err, CoreError::RoomNotFound), "got {err:?}");
+    }
+
+    /// Deck with one free-form (`list-`) entry and one provider-sourced
+    /// entry, as `deck_from_items` would produce.
+    fn list_deck() -> Vec<Restaurant> {
+        vec![
+            Restaurant {
+                id: "list-1f6f4f7e-0000-0000-0000-000000000000".into(),
+                name: "Mom's Tacos".into(),
+                cuisine: None,
+                price_level: None,
+                rating: None,
+                rating_count: None,
+                address: String::new(),
+                photo_url: None,
+                lat: None,
+                lng: None,
+                hours: None,
+                utc_offset_minutes: None,
+            },
+            restaurant("seed-002", "Curry House", "indian", 2, 4.4),
+        ]
+    }
+
+    #[tokio::test]
+    async fn create_with_deck_stores_deck_verbatim_with_source_list_name() {
+        let (repo, service) = service_with(vec![]);
+        let deck = list_deck();
+        let (room, returned) = service
+            .create_with_deck(Uuid::new_v4(), Some("Date Night".into()), "Faves", deck.clone())
+            .await
+            .unwrap();
+        assert_eq!(room.code.len(), 6);
+        assert_eq!(room.source_list_name.as_deref(), Some("Faves"));
+        assert_eq!(room.name.as_deref(), Some("Date Night"));
+        assert_eq!(returned, deck, "deck must be returned untouched, in order");
+        let (stored_room, stored_deck) = repo.find_by_code(&room.code).await.unwrap().unwrap();
+        assert_eq!(stored_deck, deck, "repo snapshot must equal the input deck");
+        assert_eq!(stored_room.source_list_name.as_deref(), Some("Faves"));
+    }
+
+    #[tokio::test]
+    async fn create_with_deck_synthesizes_valid_placeholder_params() {
+        let (_, service) = service_with(vec![]);
+        let (room, _) = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", list_deck())
+            .await
+            .unwrap();
+        assert_eq!(
+            room.params,
+            RoomParams {
+                lat: 0.0,
+                lng: 0.0,
+                location_label: "Faves".into(),
+                radius_m: 1000,
+                cuisines: vec![],
+                price_min: 1,
+                price_max: 4,
+                min_rating: 0.0,
+            }
+        );
+        room.params.validate().expect("synthesized params must pass validation");
+    }
+
+    #[tokio::test]
+    async fn create_with_deck_room_is_retrievable_via_get_room() {
+        let (_, service) = service_with(vec![]);
+        let deck = list_deck();
+        let (room, _) = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", deck.clone())
+            .await
+            .unwrap();
+        let (got_room, got_deck, _) = service.get_room(&room.code, Uuid::new_v4()).await.unwrap();
+        assert_eq!((got_room, got_deck), (room, deck));
+    }
+
+    #[tokio::test]
+    async fn create_with_deck_empty_deck_is_invalid_params() {
+        let (_, service) = service_with(vec![]);
+        let err = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", vec![])
+            .await
+            .unwrap_err();
+        assert!(
+            matches!(&err, CoreError::InvalidParams(msg) if msg == "list has no items"),
+            "got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn create_with_deck_retries_on_code_conflict() {
+        let (repo, service) = service_with(vec![]);
+        repo.conflict_next_creates(1);
+        let (room, _) = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", list_deck())
+            .await
+            .unwrap();
+        let attempted = repo.attempted_codes();
+        assert_eq!(attempted.len(), 2, "one rejected attempt plus one success");
+        assert_eq!(room.code, attempted[1]);
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_list_id_skips_provider_and_cache() {
+        let (provider, cache, service) = details_service(vec![]);
+        let deck = list_deck();
+        let list_id = deck[0].id.clone();
+        let (room, _) = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", deck)
+            .await
+            .unwrap();
+
+        let (restaurant, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), &list_id).await.unwrap();
+
+        assert_eq!(restaurant.id, list_id, "snapshot from the deck is returned");
+        assert_eq!(details, ProviderDetails::default());
+        assert_eq!(provider.details_calls(), 0, "provider must not be called for list- ids");
+        assert!(cache.stored(&list_id).is_none(), "cache must stay untouched for list- ids");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_non_list_id_in_deck_room_still_hits_provider() {
+        let (provider, _, service) = details_service(vec![]);
+        let (room, _) = service
+            .create_with_deck(Uuid::new_v4(), None, "Faves", list_deck())
+            .await
+            .unwrap();
+        provider.set_details(details_fixture("https://curry.example.com"));
+
+        let (_, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "seed-002").await.unwrap();
+
+        assert_eq!(details.website.as_deref(), Some("https://curry.example.com"));
+        assert_eq!(provider.details_calls(), 1, "provider-sourced ids keep the normal path");
+    }
+
+    #[tokio::test]
+    async fn participants_returned_in_join_order() {
+        let (_, service) = service_with(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        for name in ["Alice", "Bob", "Cleo"] {
+            service.join(&room.code, Uuid::new_v4(), name).await.unwrap();
+        }
+        let participants = service.participants(&room.code).await.unwrap();
+        let names: Vec<&str> = participants.iter().map(|p| p.display_name.as_str()).collect();
+        assert_eq!(names, ["Alice", "Bob", "Cleo"]);
+    }
+
+    #[tokio::test]
+    async fn participants_unknown_room_is_room_not_found() {
+        let (_, service) = service_with(default_deck());
+        let err = service.participants("NOSUCH").await.unwrap_err();
         assert!(matches!(err, CoreError::RoomNotFound), "got {err:?}");
     }
 

@@ -333,6 +333,35 @@ impl RoomRepo for FakeRoomRepo {
             .count();
         Ok(count as i64)
     }
+
+    async fn delete_older_than(&self, cutoff: DateTime<Utc>) -> Result<u64, RepoError> {
+        let mut state = self.state.lock().unwrap();
+        let expired: Vec<Uuid> = state
+            .rooms
+            .values()
+            .filter(|(room, _)| room.created_at < cutoff)
+            .map(|(room, _)| room.id)
+            .collect();
+        state.rooms.retain(|_, (room, _)| room.created_at >= cutoff);
+        state.participants.retain(|p| !expired.contains(&p.room_id));
+        state.swipes.retain(|s| !expired.contains(&s.room_id));
+        Ok(expired.len() as u64)
+    }
+
+    async fn participants(&self, room_id: Uuid) -> Result<Vec<Participant>, RepoError> {
+        let mut participants: Vec<Participant> = self
+            .state
+            .lock()
+            .unwrap()
+            .participants
+            .iter()
+            .filter(|p| p.room_id == room_id)
+            .cloned()
+            .collect();
+        // Stable sort: ties (equal Utc::now() in tests) keep join order.
+        participants.sort_by_key(|p| p.joined_at);
+        Ok(participants)
+    }
 }
 
 struct Membership {
@@ -446,5 +475,69 @@ impl ListRepo for FakeListRepo {
             .collect();
         memberships.sort_by_key(|(seq, _)| std::cmp::Reverse(*seq));
         Ok(memberships.into_iter().map(|(_, m)| m).collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    fn room_created_at(created_at: DateTime<Utc>) -> Room {
+        Room {
+            id: Uuid::new_v4(),
+            code: Uuid::new_v4().to_string()[..6].to_uppercase(),
+            name: None,
+            params: valid_params(),
+            created_by: Uuid::new_v4(),
+            created_at,
+            source_list_name: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn fake_delete_older_than_respects_cutoff() {
+        let repo = FakeRoomRepo::new();
+        let cutoff = Utc::now() - Duration::days(30);
+        let old = room_created_at(cutoff - Duration::seconds(1));
+        let fresh = room_created_at(cutoff + Duration::seconds(1));
+        repo.create(&old, &[]).await.unwrap();
+        repo.create(&fresh, &[]).await.unwrap();
+
+        let deleted = repo.delete_older_than(cutoff).await.unwrap();
+
+        assert_eq!(deleted, 1, "exactly the backdated room is deleted");
+        assert!(repo.find_by_code(&old.code).await.unwrap().is_none(), "old room gone");
+        assert!(repo.find_by_code(&fresh.code).await.unwrap().is_some(), "fresh room kept");
+    }
+
+    #[tokio::test]
+    async fn fake_participants_sorted_by_joined_at_asc() {
+        let repo = FakeRoomRepo::new();
+        let room = room_created_at(Utc::now());
+        repo.create(&room, &[]).await.unwrap();
+        for name in ["Alice", "Bob", "Cleo"] {
+            repo.join(room.id, Uuid::new_v4(), name).await.unwrap();
+        }
+
+        let participants = repo.participants(room.id).await.unwrap();
+
+        let names: Vec<&str> = participants.iter().map(|p| p.display_name.as_str()).collect();
+        assert_eq!(names, ["Alice", "Bob", "Cleo"]);
+    }
+
+    #[tokio::test]
+    async fn fake_participants_scoped_to_room() {
+        let repo = FakeRoomRepo::new();
+        let (room_a, room_b) = (room_created_at(Utc::now()), room_created_at(Utc::now()));
+        repo.create(&room_a, &[]).await.unwrap();
+        repo.create(&room_b, &[]).await.unwrap();
+        repo.join(room_a.id, Uuid::new_v4(), "Alice").await.unwrap();
+        repo.join(room_b.id, Uuid::new_v4(), "Bob").await.unwrap();
+
+        let participants = repo.participants(room_a.id).await.unwrap();
+
+        assert_eq!(participants.len(), 1);
+        assert_eq!(participants[0].display_name, "Alice");
     }
 }

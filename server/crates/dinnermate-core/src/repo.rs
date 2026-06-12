@@ -33,6 +33,11 @@ pub trait RoomRepo: Send + Sync {
     ) -> Result<(), RepoError>;
     async fn matches(&self, room_id: Uuid) -> Result<Vec<MatchEntry>, RepoError>;
     async fn participant_count(&self, room_id: Uuid) -> Result<i64, RepoError>;
+    /// Deletes rooms created before `cutoff` (decks/participants/swipes
+    /// cascade). Returns the number of rooms deleted.
+    async fn delete_older_than(&self, cutoff: DateTime<Utc>) -> Result<u64, RepoError>;
+    /// All participants of the room, joined_at asc.
+    async fn participants(&self, room_id: Uuid) -> Result<Vec<Participant>, RepoError>;
 }
 
 #[async_trait]

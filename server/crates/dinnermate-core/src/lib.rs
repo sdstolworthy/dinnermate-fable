@@ -4,6 +4,7 @@ pub mod code;
 pub mod error;
 pub mod filter;
 pub mod hours;
+pub mod list_deck;
 pub mod model;
 pub mod osm_hours;
 pub mod provider;
@@ -15,6 +16,7 @@ pub mod testing;
 pub use code::generate_code;
 pub use error::{CoreError, ProviderError, RepoError};
 pub use hours::{open_status, OpenStatus};
+pub use list_deck::deck_from_items;
 pub use model::{
     HoursPeriod, List, ListItem, ListMembership, MatchEntry, Participant, ProviderDetails,
     Restaurant, Review, Room, RoomParams,

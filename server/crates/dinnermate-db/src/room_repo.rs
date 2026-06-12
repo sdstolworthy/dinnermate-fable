@@ -291,4 +291,26 @@ impl RoomRepo for PgRoomRepo {
             .await
             .map_err(into_repo_error)
     }
+
+    // v3 Task3 tests this
+    async fn delete_older_than(&self, cutoff: DateTime<Utc>) -> Result<u64, RepoError> {
+        let result = sqlx::query("DELETE FROM rooms WHERE created_at < $1")
+            .bind(cutoff)
+            .execute(&self.pool)
+            .await
+            .map_err(into_repo_error)?;
+        Ok(result.rows_affected())
+    }
+
+    // v3 Task3 tests this
+    async fn participants(&self, room_id: Uuid) -> Result<Vec<Participant>, RepoError> {
+        let rows: Vec<ParticipantRow> = sqlx::query_as(
+            "SELECT * FROM participants WHERE room_id = $1 ORDER BY joined_at ASC",
+        )
+        .bind(room_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(into_repo_error)?;
+        Ok(rows.into_iter().map(Into::into).collect())
+    }
 }
