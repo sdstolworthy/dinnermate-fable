@@ -265,8 +265,8 @@ Dataset: 60 restaurants, ids `seed-001..seed-060`, ≥8 cuisines (mexican, thai,
 
 `server.rs` builds `Router` from injected `AppState { rooms: RoomService, lists: ListService }` so tests construct it with fakes/seed + test DB. `extract.rs`: `UserId` extractor reading `X-Dinnermate-User` (400 `MISSING_USER` if absent/invalid). CORS from config. `main.rs`: tracing init, config from env, pool+migrate, provider select (`seed`/`google` — google wired in Task 7, until then `unimplemented` arm returns config error), serve.
 
-- [ ] Integration tests (axum `Router` + `tower::ServiceExt::oneshot`, test DB from `TEST_DATABASE_URL`, seed provider): full flow create room → join 2 users → 3 swipes → matches sorted with participant_count=2; status-code table: missing header 400, bad code 404, duplicate swipe 409, swipe w/o join 403, bad params 422; list flow create → other user adds item → owner GET sees it; `GET /healthz` 200 without header
-- [ ] Run: `./scripts/test-db.sh` extended to also run `cargo test -p dinnermate-api`; PASS; commit `feat(api): http server with room and list routes`
+- [x] Integration tests (axum `Router` + `tower::ServiceExt::oneshot`, test DB from `TEST_DATABASE_URL`, seed provider): full flow create room → join 2 users → 3 swipes → matches sorted with participant_count=2; status-code table: missing header 400, bad code 404, duplicate swipe 409, swipe w/o join 403, bad params 422; list flow create → other user adds item → owner GET sees it; `GET /healthz` 200 without header
+- [x] Run: `./scripts/test-db.sh` extended to also run `cargo test -p dinnermate-api`; PASS; commit `feat(api): http server with room and list routes`
 
 ## Task 6: OpenAPI spec
 
