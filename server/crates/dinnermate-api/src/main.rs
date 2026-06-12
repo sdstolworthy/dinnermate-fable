@@ -4,9 +4,8 @@ use std::sync::Arc;
 use dinnermate_api::config::{Config, RestaurantProviderKind};
 use dinnermate_api::google::{GooglePlacesProvider, GOOGLE_PLACES_BASE_URL};
 use dinnermate_api::server::{build_router, cors_layer, AppState};
-use dinnermate_core::testing::NoopDetailsCache;
 use dinnermate_core::{ListService, RestaurantProvider, RoomService, SeedProvider};
-use dinnermate_db::{connect_and_migrate, PgListRepo, PgRoomRepo};
+use dinnermate_db::{connect_and_migrate, PgDetailsCacheRepo, PgListRepo, PgRoomRepo};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -36,8 +35,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         rooms: Arc::new(RoomService::new(
             Arc::new(PgRoomRepo::new(pool.clone())),
             provider,
-            // Task 4 replaces with PgDetailsCacheRepo (migration 0002, Task 3).
-            Arc::new(NoopDetailsCache),
+            Arc::new(PgDetailsCacheRepo::new(pool.clone())),
         )),
         lists: Arc::new(ListService::new(Arc::new(PgListRepo::new(pool)))),
     };

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::http::HeaderValue;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Router;
 use dinnermate_core::{ListService, RoomService};
 use tower_http::cors::{Any, CorsLayer};
@@ -38,9 +38,15 @@ pub fn build_router(state: AppState, cors: CorsLayer) -> Router {
         .route("/rooms/{code}/join", post(rooms::join))
         .route("/rooms/{code}/swipes", post(rooms::swipe))
         .route("/rooms/{code}/matches", get(rooms::matches))
+        .route(
+            "/rooms/{code}/restaurants/{restaurant_id}/details",
+            get(rooms::restaurant_details),
+        )
         .route("/lists", post(lists::create).get(lists::mine))
         .route("/lists/{code}", get(lists::get))
         .route("/lists/{code}/items", post(lists::add_item))
+        .route("/lists/{code}/join", post(lists::join))
+        .route("/lists/{code}/members/me", delete(lists::leave))
         .with_state(state);
     Router::new()
         .route("/healthz", get(health::healthz))

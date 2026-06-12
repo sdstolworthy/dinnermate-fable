@@ -3,7 +3,7 @@ use axum::http::StatusCode;
 use axum::Json;
 use chrono::{DateTime, Utc};
 use dinnermate_core::service::NewListItem;
-use dinnermate_core::{List, ListItem};
+use dinnermate_core::{List, ListItem, ListMembership};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -100,15 +100,37 @@ pub struct CreateListResponse {
     pub list: ListDto,
 }
 
+/// `ListDto` fields flattened to the top level, plus the caller's ownership flag.
+#[derive(Debug, Serialize)]
+pub struct MyListDto {
+    #[serde(flatten)]
+    pub list: ListDto,
+    pub is_owner: bool,
+}
+
+impl From<ListMembership> for MyListDto {
+    fn from(membership: ListMembership) -> Self {
+        MyListDto { list: membership.list.into(), is_owner: membership.is_owner }
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct MyListsResponse {
-    pub lists: Vec<ListDto>,
+    pub lists: Vec<MyListDto>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct JoinListResponse {
+    pub list: ListDto,
+    pub is_owner: bool,
 }
 
 #[derive(Debug, Serialize)]
 pub struct ListDetailResponse {
     pub list: ListDto,
     pub items: Vec<ListItemDto>,
+    pub is_member: bool,
+    pub is_owner: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -130,20 +152,42 @@ pub async fn mine(
     UserId(user): UserId,
 ) -> Result<Json<MyListsResponse>, ApiError> {
     let lists = state.lists.mine(user).await?;
-    // Task 4 adds is_owner to the DTO; until then only the list is exposed.
-    Ok(Json(MyListsResponse { lists: lists.into_iter().map(|m| m.list.into()).collect() }))
+    Ok(Json(MyListsResponse { lists: lists.into_iter().map(Into::into).collect() }))
 }
 
 pub async fn get(
     State(state): State<AppState>,
-    UserId(_): UserId,
+    UserId(user): UserId,
     Path(code): Path<String>,
 ) -> Result<Json<ListDetailResponse>, ApiError> {
-    let (list, items) = state.lists.get(&code).await?;
+    let (list, items, is_member, is_owner) = state.lists.get(&code, user).await?;
     Ok(Json(ListDetailResponse {
         list: list.into(),
         items: items.into_iter().map(Into::into).collect(),
+        is_member,
+        is_owner,
     }))
+}
+
+pub async fn join(
+    State(state): State<AppState>,
+    UserId(user): UserId,
+    Path(code): Path<String>,
+) -> Result<Json<JoinListResponse>, ApiError> {
+    let membership = state.lists.join(&code, user).await?;
+    Ok(Json(JoinListResponse {
+        list: membership.list.into(),
+        is_owner: membership.is_owner,
+    }))
+}
+
+pub async fn leave(
+    State(state): State<AppState>,
+    UserId(user): UserId,
+    Path(code): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    state.lists.leave(&code, user).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn add_item(

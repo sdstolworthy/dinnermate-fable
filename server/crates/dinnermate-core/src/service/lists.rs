@@ -50,8 +50,17 @@ impl ListService {
         Err(CoreError::Repo(RepoError::Conflict))
     }
 
-    pub async fn get(&self, code: &str) -> Result<(List, Vec<ListItem>), CoreError> {
-        self.find_list(code).await
+    /// List detail plus the caller's `(is_member, is_owner)` flags. Reads stay
+    /// open to anyone with the code; the flags drive client affordances.
+    pub async fn get(
+        &self,
+        code: &str,
+        user_id: Uuid,
+    ) -> Result<(List, Vec<ListItem>, bool, bool), CoreError> {
+        let (list, items) = self.find_list(code).await?;
+        let is_member = self.repo.is_member(list.id, user_id).await?;
+        let is_owner = list.owner_user_id == user_id;
+        Ok((list, items, is_member, is_owner))
     }
 
     pub async fn add_item(
@@ -139,9 +148,10 @@ mod tests {
         let owner = Uuid::new_v4();
         let list = service.create(owner, "Date spots").await.unwrap();
         assert_eq!(list.code.len(), 6);
-        let (got, items) = service.get(&list.code).await.unwrap();
+        let (got, items, is_member, is_owner) = service.get(&list.code, owner).await.unwrap();
         assert_eq!(got, list);
         assert!(items.is_empty());
+        assert!(is_member && is_owner, "creator must be member and owner");
     }
 
     #[tokio::test]
@@ -159,7 +169,7 @@ mod tests {
         let owner = Uuid::new_v4();
         let list = service.create(owner, "Shared picks").await.unwrap();
         let item = service.add_item(&list.code, owner, new_item("Thai Garden")).await.unwrap();
-        let (_, items) = service.get(&list.code).await.unwrap();
+        let (_, items, _, _) = service.get(&list.code, owner).await.unwrap();
         assert_eq!(items, vec![item]);
     }
 
@@ -252,8 +262,22 @@ mod tests {
     #[tokio::test]
     async fn get_unknown_list_is_list_not_found() {
         let service = service();
-        let err = service.get("NOSUCH").await.unwrap_err();
+        let err = service.get("NOSUCH", Uuid::new_v4()).await.unwrap_err();
         assert!(matches!(err, CoreError::ListNotFound), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn get_reports_membership_flags_per_caller() {
+        let service = service();
+        let list = service.create(Uuid::new_v4(), "Flags").await.unwrap();
+        let member = Uuid::new_v4();
+        service.join(&list.code, member).await.unwrap();
+
+        let (_, _, is_member, is_owner) = service.get(&list.code, member).await.unwrap();
+        assert!(is_member && !is_owner, "joined non-owner");
+
+        let (_, _, is_member, is_owner) = service.get(&list.code, Uuid::new_v4()).await.unwrap();
+        assert!(!is_member && !is_owner, "stranger");
     }
 
     #[tokio::test]

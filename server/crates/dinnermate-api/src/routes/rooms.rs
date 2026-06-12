@@ -3,7 +3,9 @@ use axum::http::StatusCode;
 use axum::Json;
 use chrono::{DateTime, Utc};
 use dinnermate_core::service::CreateRoom;
-use dinnermate_core::{MatchEntry, Participant, Restaurant, Room, RoomParams};
+use dinnermate_core::{
+    CoreError, HoursPeriod, MatchEntry, Participant, Restaurant, Review, Room, RoomParams,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use uuid::Uuid;
@@ -80,6 +82,19 @@ impl From<Room> for RoomDto {
 }
 
 #[derive(Debug, Serialize)]
+pub struct HoursPeriodDto {
+    pub day: u8,
+    pub open: String,
+    pub close: String,
+}
+
+impl From<HoursPeriod> for HoursPeriodDto {
+    fn from(p: HoursPeriod) -> Self {
+        HoursPeriodDto { day: p.day, open: p.open, close: p.close }
+    }
+}
+
+#[derive(Debug, Serialize)]
 pub struct RestaurantDto {
     pub id: String,
     pub name: String,
@@ -91,6 +106,8 @@ pub struct RestaurantDto {
     pub photo_url: Option<String>,
     pub lat: f64,
     pub lng: f64,
+    pub hours: Option<Vec<HoursPeriodDto>>,
+    pub utc_offset_minutes: Option<i32>,
 }
 
 impl From<Restaurant> for RestaurantDto {
@@ -106,6 +123,8 @@ impl From<Restaurant> for RestaurantDto {
             photo_url: r.photo_url,
             lat: r.lat,
             lng: r.lng,
+            hours: r.hours.map(|periods| periods.into_iter().map(Into::into).collect()),
+            utc_offset_minutes: r.utc_offset_minutes,
         }
     }
 }
@@ -181,6 +200,34 @@ pub struct JoinResponse {
     pub participant: ParticipantDto,
 }
 
+#[derive(Debug, Serialize)]
+pub struct ReviewDto {
+    pub author: String,
+    pub rating: u8,
+    pub text: String,
+    pub relative_time: Option<String>,
+}
+
+impl From<Review> for ReviewDto {
+    fn from(r: Review) -> Self {
+        ReviewDto {
+            author: r.author,
+            rating: r.rating,
+            text: r.text,
+            relative_time: r.relative_time,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct RestaurantDetailsResponse {
+    pub restaurant: RestaurantDto,
+    pub website: Option<String>,
+    pub phone: Option<String>,
+    pub maps_url: Option<String>,
+    pub reviews: Vec<ReviewDto>,
+}
+
 fn to_deck(deck: Vec<Restaurant>) -> Vec<RestaurantDto> {
     deck.into_iter().map(Into::into).collect()
 }
@@ -226,6 +273,30 @@ pub async fn swipe(
 ) -> Result<(StatusCode, Json<Value>), ApiError> {
     state.rooms.swipe(&code, user, &body.restaurant_id, body.liked).await?;
     Ok((StatusCode::CREATED, Json(json!({}))))
+}
+
+pub async fn restaurant_details(
+    State(state): State<AppState>,
+    UserId(user): UserId,
+    Path((code, restaurant_id)): Path<(String, String)>,
+) -> Result<Json<RestaurantDetailsResponse>, ApiError> {
+    let (restaurant, details) = state
+        .rooms
+        .restaurant_details(&code, user, &restaurant_id)
+        .await
+        // Route-local mapping: here an unknown restaurant is a failed resource
+        // lookup (404); the swipe route keeps the generic 422 for the same error.
+        .map_err(|err| match err {
+            CoreError::UnknownRestaurant => ApiError::RestaurantNotFound,
+            other => other.into(),
+        })?;
+    Ok(Json(RestaurantDetailsResponse {
+        restaurant: restaurant.into(),
+        website: details.website,
+        phone: details.phone,
+        maps_url: details.maps_url,
+        reviews: details.reviews.into_iter().map(Into::into).collect(),
+    }))
 }
 
 pub async fn matches(

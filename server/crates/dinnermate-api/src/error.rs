@@ -9,6 +9,9 @@ use serde_json::json;
 pub enum ApiError {
     /// `X-Dinnermate-User` header absent or not a UUID.
     MissingUser,
+    /// `CoreError::UnknownRestaurant` on the details route, where it has
+    /// resource-lookup semantics (404) rather than the swipe route's 422.
+    RestaurantNotFound,
     Core(CoreError),
 }
 
@@ -25,6 +28,11 @@ impl ApiError {
                 StatusCode::BAD_REQUEST,
                 "MISSING_USER",
                 "missing or invalid X-Dinnermate-User header".to_string(),
+            ),
+            ApiError::RestaurantNotFound => (
+                StatusCode::NOT_FOUND,
+                "UNKNOWN_RESTAURANT",
+                CoreError::UnknownRestaurant.to_string(),
             ),
             ApiError::Core(err) => {
                 let (status, code) = match err {

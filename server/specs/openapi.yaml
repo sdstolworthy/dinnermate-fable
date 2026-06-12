@@ -148,6 +148,38 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/v1/rooms/{code}/restaurants/{restaurant_id}/details:
+    get:
+      tags: [rooms]
+      operationId: getRestaurantDetails
+      summary: On-demand details for a restaurant in the room's deck
+      description: >
+        Website, phone, maps link, and reviews fetched from the provider and
+        cached server-side for 24 hours. Unlike the swipe route, an id that is
+        not in the deck is a failed resource lookup here (404, not 422).
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+        - $ref: '#/components/parameters/RestaurantId'
+      responses:
+        '200':
+          description: Restaurant snapshot plus provider details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestaurantDetailsResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          description: >
+            No room with that code (ROOM_NOT_FOUND) or restaurant not in the
+            room's deck (UNKNOWN_RESTAURANT).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
   /api/v1/lists:
     post:
       tags: [lists]
@@ -171,10 +203,10 @@ paths:
     get:
       tags: [lists]
       operationId: myLists
-      summary: Lists owned by the caller
+      summary: Lists the caller owns or has joined
       responses:
         '200':
-          description: Caller's lists
+          description: Caller's lists (owned + joined), ordered by joined_at desc
           content:
             application/json:
               schema:
@@ -207,7 +239,7 @@ paths:
       tags: [lists]
       operationId: addListItem
       summary: Add an item to a list
-      description: Any caller with the code may add items, not only the owner.
+      description: Requires membership; join the list first.
       parameters:
         - $ref: '#/components/parameters/ListCode'
       requestBody:
@@ -225,8 +257,56 @@ paths:
                 $ref: '#/components/schemas/AddItemResponse'
         '400':
           $ref: '#/components/responses/MissingUser'
+        '403':
+          description: Caller is not a member of the list (code NOT_LIST_MEMBER)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/v1/lists/{code}/join:
+    post:
+      tags: [lists]
+      operationId: joinList
+      summary: Join a list as a member
+      description: Idempotent; joining again returns the same 200 response.
+      parameters:
+        - $ref: '#/components/parameters/ListCode'
+      responses:
+        '200':
+          description: Membership created (or already present)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinListResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/lists/{code}/members/me:
+    delete:
+      tags: [lists]
+      operationId: leaveList
+      summary: Leave a list
+      description: The owner cannot leave their own list.
+      parameters:
+        - $ref: '#/components/parameters/ListCode'
+      responses:
+        '204':
+          description: Membership removed (no body)
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Caller owns the list (code OWNER_CANNOT_LEAVE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /healthz:
     get:
@@ -268,6 +348,13 @@ components:
       description: Six-character list code (alphabet ABCDEFGHJKMNPQRSTUVWXYZ23456789)
       schema:
         $ref: '#/components/schemas/ShareCode'
+    RestaurantId:
+      name: restaurant_id
+      in: path
+      required: true
+      description: Provider-scoped restaurant id from the room's deck
+      schema:
+        type: string
 
   responses:
     MissingUser:
@@ -328,8 +415,10 @@ components:
                 - ROOM_NOT_FOUND
                 - LIST_NOT_FOUND
                 - NOT_IN_ROOM
+                - NOT_LIST_MEMBER
                 - ALREADY_SWIPED
                 - UNKNOWN_RESTAURANT
+                - OWNER_CANNOT_LEAVE
                 - INVALID_PARAMS
                 - PROVIDER_UNAVAILABLE
                 - INTERNAL
@@ -439,6 +528,27 @@ components:
           type: string
           format: date-time
 
+    HoursPeriod:
+      type: object
+      description: >
+        Weekly opening span in the restaurant's local time. A close earlier
+        than open means the span crosses midnight into the next day.
+      required: [day, open, close]
+      properties:
+        day:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: 0 = Sunday .. 6 = Saturday
+        open:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+          examples: ['11:00']
+        close:
+          type: string
+          pattern: '^\d{2}:\d{2}$'
+          examples: ['22:00']
+
     Restaurant:
       type: object
       required:
@@ -452,6 +562,8 @@ components:
         - photo_url
         - lat
         - lng
+        - hours
+        - utc_offset_minutes
       properties:
         id:
           type: string
@@ -483,6 +595,50 @@ components:
         lng:
           type: number
           format: double
+        hours:
+          oneOf:
+            - type: array
+              items:
+                $ref: '#/components/schemas/HoursPeriod'
+            - type: 'null'
+          description: Weekly opening hours; null when unknown.
+        utc_offset_minutes:
+          type: [integer, 'null']
+          description: Restaurant-local UTC offset in minutes; null when unknown.
+
+    Review:
+      type: object
+      required: [author, rating, text, relative_time]
+      properties:
+        author:
+          type: string
+        rating:
+          type: integer
+          minimum: 0
+          maximum: 5
+        text:
+          type: string
+        relative_time:
+          type: [string, 'null']
+          examples: ['2 months ago']
+
+    RestaurantDetailsResponse:
+      type: object
+      required: [restaurant, website, phone, maps_url, reviews]
+      properties:
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        website:
+          type: [string, 'null']
+        phone:
+          type: [string, 'null']
+        maps_url:
+          type: [string, 'null']
+        reviews:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/Review'
 
     Participant:
       type: object
@@ -674,6 +830,16 @@ components:
         list:
           $ref: '#/components/schemas/List'
 
+    MyList:
+      description: A list the caller belongs to — List fields plus the ownership flag.
+      allOf:
+        - $ref: '#/components/schemas/List'
+        - type: object
+          required: [is_owner]
+          properties:
+            is_owner:
+              type: boolean
+
     MyListsResponse:
       type: object
       required: [lists]
@@ -681,11 +847,20 @@ components:
         lists:
           type: array
           items:
-            $ref: '#/components/schemas/List'
+            $ref: '#/components/schemas/MyList'
+
+    JoinListResponse:
+      type: object
+      required: [list, is_owner]
+      properties:
+        list:
+          $ref: '#/components/schemas/List'
+        is_owner:
+          type: boolean
 
     ListDetailResponse:
       type: object
-      required: [list, items]
+      required: [list, items, is_member, is_owner]
       properties:
         list:
           $ref: '#/components/schemas/List'
@@ -693,6 +868,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ListItem'
+        is_member:
+          type: boolean
+          description: Whether the caller is a member (owners are members).
+        is_owner:
+          type: boolean
 
     AddItemResponse:
       type: object

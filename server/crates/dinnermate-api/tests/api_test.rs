@@ -9,7 +9,7 @@ use axum::http::{header, Method, Request, Response, StatusCode};
 use axum::Router;
 use dinnermate_api::server::{build_router, AppState};
 use dinnermate_core::{ListService, RoomService, SeedProvider};
-use dinnermate_db::{connect_and_migrate, PgListRepo, PgRoomRepo};
+use dinnermate_db::{connect_and_migrate, PgDetailsCacheRepo, PgListRepo, PgRoomRepo};
 use http_body_util::BodyExt;
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -28,8 +28,7 @@ async fn router() -> Router {
         rooms: Arc::new(RoomService::new(
             Arc::new(PgRoomRepo::new(pool.clone())),
             Arc::new(SeedProvider::new()),
-            // Task 4 replaces with PgDetailsCacheRepo (migration 0002, Task 3).
-            Arc::new(dinnermate_core::testing::NoopDetailsCache),
+            Arc::new(PgDetailsCacheRepo::new(pool.clone())),
         )),
         lists: Arc::new(ListService::new(Arc::new(PgListRepo::new(pool)))),
     };
@@ -251,6 +250,218 @@ async fn status_code_table() {
     }
 }
 
+/// Creates a list as `owner` and returns its share code.
+async fn create_list(app: &Router, owner: Uuid, name: &str) -> String {
+    let response = app
+        .clone()
+        .oneshot(req(Method::POST, "/api/v1/lists", Some(owner), Some(json!({"name": name}))))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    json_body(response).await["list"]["code"].as_str().unwrap().to_string()
+}
+
+/// Joins `user` to the list and returns the response body.
+async fn join_list(app: &Router, code: &str, user: Uuid) -> Value {
+    let response = app
+        .clone()
+        .oneshot(req(Method::POST, &format!("/api/v1/lists/{code}/join"), Some(user), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK, "list join failed");
+    json_body(response).await
+}
+
+async fn add_list_item(app: &Router, code: &str, user: Uuid, name: &str) -> Response<Body> {
+    app.clone()
+        .oneshot(req(
+            Method::POST,
+            &format!("/api/v1/lists/{code}/items"),
+            Some(user),
+            Some(json!({"name": name})),
+        ))
+        .await
+        .unwrap()
+}
+
+async fn leave_list(app: &Router, code: &str, user: Uuid) -> Response<Body> {
+    app.clone()
+        .oneshot(req(
+            Method::DELETE,
+            &format!("/api/v1/lists/{code}/members/me"),
+            Some(user),
+            None,
+        ))
+        .await
+        .unwrap()
+}
+
+#[tokio::test]
+async fn list_membership_flow() {
+    let app = router().await;
+    let (a, b, c) = (Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4());
+    let code = create_list(&app, a, "Date night").await;
+
+    let joined = join_list(&app, &code, b).await;
+    assert_eq!(joined["list"]["code"], json!(code));
+    assert_eq!(joined["is_owner"], json!(false));
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, "/api/v1/lists", Some(b), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let mine = json_body(response).await;
+    let entry = mine["lists"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|l| l["code"] == json!(code))
+        .unwrap_or_else(|| panic!("joined list must appear in B's lists: {mine}"))
+        .clone();
+    assert_eq!(entry["is_owner"], json!(false));
+
+    let response = add_list_item(&app, &code, b, "Thai Garden").await;
+    assert_eq!(response.status(), StatusCode::CREATED, "member add must succeed");
+
+    let response = add_list_item(&app, &code, c, "Crash The Party").await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let body = json_body(response).await;
+    assert_eq!(body["error"]["code"], json!("NOT_LIST_MEMBER"), "body {body}");
+
+    let response = leave_list(&app, &code, b).await;
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    let response = add_list_item(&app, &code, b, "After Leaving").await;
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert_eq!(json_body(response).await["error"]["code"], json!("NOT_LIST_MEMBER"));
+
+    let response = leave_list(&app, &code, a).await;
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(json_body(response).await["error"]["code"], json!("OWNER_CANNOT_LEAVE"));
+}
+
+#[tokio::test]
+async fn list_detail_flags() {
+    let app = router().await;
+    let owner = Uuid::new_v4();
+    let code = create_list(&app, owner, "Flags").await;
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/lists/{code}"), Some(owner), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_body(response).await;
+    assert_eq!(body["is_member"], json!(true), "owner is a member, body {body}");
+    assert_eq!(body["is_owner"], json!(true));
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/lists/{code}"), Some(Uuid::new_v4()), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK, "preview stays open to strangers");
+    let body = json_body(response).await;
+    assert_eq!(body["is_member"], json!(false), "body {body}");
+    assert_eq!(body["is_owner"], json!(false));
+}
+
+#[tokio::test]
+async fn details_flow() {
+    let app = router().await;
+    let (code, deck) = create_room(&app).await;
+    let user = Uuid::new_v4();
+    let first = deck[0]["id"].as_str().unwrap();
+
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::GET,
+            &format!("/api/v1/rooms/{code}/restaurants/{first}/details"),
+            Some(user),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_body(response).await;
+    assert_eq!(body["restaurant"]["id"], json!(first));
+    // Seed entries embed a website for only ~half the dataset, so the value
+    // may be null — but the key must always be present.
+    assert!(
+        body.as_object().unwrap().contains_key("website"),
+        "website key must be present, body {body}"
+    );
+    assert_eq!(body["reviews"], json!([]), "seed never fabricates reviews");
+
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::GET,
+            &format!("/api/v1/rooms/{code}/restaurants/seed-999/details"),
+            Some(user),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND, "details route maps unknown id to 404");
+    assert_eq!(json_body(response).await["error"]["code"], json!("UNKNOWN_RESTAURANT"));
+
+    // The swipe route keeps 422 for the same condition.
+    join(&app, &code, user, "Sam").await;
+    let response = app
+        .clone()
+        .oneshot(req(
+            Method::POST,
+            &format!("/api/v1/rooms/{code}/swipes"),
+            Some(user),
+            Some(json!({"restaurant_id": "seed-999", "liked": true})),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(json_body(response).await["error"]["code"], json!("UNKNOWN_RESTAURANT"));
+}
+
+#[tokio::test]
+async fn rooms_carry_hours() {
+    let app = router().await;
+    let (code, _) = create_room(&app).await;
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/rooms/{code}"), Some(Uuid::new_v4()), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = json_body(response).await;
+    let deck = body["deck"].as_array().unwrap();
+
+    let with_hours: Vec<&Value> = deck.iter().filter(|r| !r["hours"].is_null()).collect();
+    assert!(!with_hours.is_empty(), "deck must carry hours for non-null seed entries");
+    for entry in &with_hours {
+        let periods = entry["hours"].as_array().unwrap();
+        assert!(!periods.is_empty(), "non-null hours must have periods: {entry}");
+        for p in periods {
+            assert!(p["day"].as_u64().unwrap() <= 6, "bad day in {p}");
+            assert!(p["open"].is_string() && p["close"].is_string(), "bad period {p}");
+        }
+        assert_eq!(
+            entry["utc_offset_minutes"],
+            json!(-360),
+            "seed offset on {}",
+            entry["id"]
+        );
+    }
+    assert!(
+        deck.iter().any(|r| r["hours"].is_null()),
+        "null-hours seed entries must surface as null"
+    );
+}
+
 #[tokio::test]
 async fn list_flow() {
     let app = router().await;
@@ -265,6 +476,9 @@ async fn list_flow() {
     let created = json_body(response).await;
     let code = created["list"]["code"].as_str().unwrap().to_string();
     assert_eq!(code.len(), 6);
+
+    // Since v2, adding items requires membership.
+    join_list(&app, &code, other).await;
 
     let response = app
         .clone()
@@ -309,12 +523,12 @@ async fn list_flow() {
 
     let response = app
         .clone()
-        .oneshot(req(Method::GET, "/api/v1/lists", Some(other), None))
+        .oneshot(req(Method::GET, "/api/v1/lists", Some(Uuid::new_v4()), None))
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let theirs = json_body(response).await;
-    assert_eq!(theirs["lists"], json!([]), "non-owner must see an empty list array");
+    assert_eq!(theirs["lists"], json!([]), "non-member must see an empty list array");
 }
 
 #[tokio::test]

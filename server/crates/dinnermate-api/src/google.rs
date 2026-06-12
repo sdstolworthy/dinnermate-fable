@@ -1,7 +1,10 @@
 //! Google Places (New) `RestaurantProvider` backed by `places:searchNearby`.
 
 use async_trait::async_trait;
-use dinnermate_core::{ProviderDetails, ProviderError, Restaurant, RestaurantProvider, RoomParams};
+use dinnermate_core::{
+    HoursPeriod, ProviderDetails, ProviderError, Restaurant, RestaurantProvider, Review,
+    RoomParams,
+};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -10,7 +13,12 @@ pub const GOOGLE_PLACES_BASE_URL: &str = "https://places.googleapis.com";
 
 const FIELD_MASK: &str = "places.id,places.displayName,places.formattedAddress,places.rating,\
                           places.userRatingCount,places.priceLevel,places.location,\
-                          places.primaryType,places.photos";
+                          places.primaryType,places.photos,places.regularOpeningHours,\
+                          places.utcOffsetMinutes";
+
+const DETAILS_FIELD_MASK: &str = "websiteUri,nationalPhoneNumber,googleMapsUri,reviews";
+
+const MAX_REVIEWS: usize = 5;
 
 pub struct GooglePlacesProvider {
     http: reqwest::Client,
@@ -45,11 +53,49 @@ impl GooglePlacesProvider {
             photo_url,
             lat: place.location.latitude,
             lng: place.location.longitude,
-            // Hours mapping arrives with the field-mask additions in a later task.
-            hours: None,
-            utc_offset_minutes: None,
+            hours: map_hours(place.regular_opening_hours),
+            utc_offset_minutes: place.utc_offset_minutes,
         }
     }
+}
+
+/// Maps Google's `regularOpeningHours.periods` to weekly spans. Periods without
+/// a close (Google's always-open sentinel) or with out-of-range fields are
+/// skipped; an empty result collapses to `None` (unknown hours).
+fn map_hours(hours: Option<OpeningHours>) -> Option<Vec<HoursPeriod>> {
+    let periods: Vec<HoursPeriod> = hours?
+        .periods
+        .into_iter()
+        .filter_map(|period| {
+            let (open, close) = (period.open?, period.close?);
+            let valid = open.day <= 6
+                && open.hour < 24
+                && open.minute < 60
+                && close.hour < 24
+                && close.minute < 60;
+            valid.then(|| HoursPeriod {
+                day: open.day,
+                open: format!("{:02}:{:02}", open.hour, open.minute),
+                close: format!("{:02}:{:02}", close.hour, close.minute),
+            })
+        })
+        .collect();
+    (!periods.is_empty()).then_some(periods)
+}
+
+/// Returns the body of a 2xx response; non-2xx becomes `Unavailable` carrying
+/// the status and a body excerpt.
+async fn read_success_body(response: reqwest::Response) -> Result<String, ProviderError> {
+    let status = response.status();
+    let text = response
+        .text()
+        .await
+        .map_err(|err| ProviderError::Unavailable(err.to_string()))?;
+    if !status.is_success() {
+        let excerpt: String = text.chars().take(200).collect();
+        return Err(ProviderError::Unavailable(format!("status {status}: {excerpt}")));
+    }
+    Ok(text)
 }
 
 /// Google omits `priceLevel` for many places; treat missing/unspecified/free
@@ -86,16 +132,7 @@ impl RestaurantProvider for GooglePlacesProvider {
             .send()
             .await
             .map_err(|err| ProviderError::Unavailable(err.to_string()))?;
-
-        let status = response.status();
-        let text = response
-            .text()
-            .await
-            .map_err(|err| ProviderError::Unavailable(err.to_string()))?;
-        if !status.is_success() {
-            let excerpt: String = text.chars().take(200).collect();
-            return Err(ProviderError::Unavailable(format!("status {status}: {excerpt}")));
-        }
+        let text = read_success_body(response).await?;
 
         let parsed: SearchResponse = serde_json::from_str(&text)
             .map_err(|err| ProviderError::InvalidResponse(err.to_string()))?;
@@ -106,12 +143,40 @@ impl RestaurantProvider for GooglePlacesProvider {
             .collect())
     }
 
-    // Task 4 implements the real Place Details call; until then the details
-    // route does not exist, so this is unreachable in practice.
+    // NOT verified against the live Place Details API (no key was available
+    // at build time); covered by stub-server tests only.
     async fn details(&self, restaurant_id: &str) -> Result<ProviderDetails, ProviderError> {
-        Err(ProviderError::Unavailable(format!(
-            "place details not implemented yet (requested {restaurant_id})"
-        )))
+        let response = self
+            .http
+            .get(format!("{}/v1/places/{restaurant_id}", self.base_url))
+            .header("X-Goog-Api-Key", &self.api_key)
+            .header("X-Goog-FieldMask", DETAILS_FIELD_MASK)
+            .send()
+            .await
+            .map_err(|err| ProviderError::Unavailable(err.to_string()))?;
+        let text = read_success_body(response).await?;
+
+        let parsed: DetailsResponse = serde_json::from_str(&text)
+            .map_err(|err| ProviderError::InvalidResponse(err.to_string()))?;
+        Ok(ProviderDetails {
+            website: parsed.website_uri,
+            phone: parsed.national_phone_number,
+            maps_url: parsed.google_maps_uri,
+            reviews: parsed
+                .reviews
+                .into_iter()
+                .take(MAX_REVIEWS)
+                .map(|review| Review {
+                    author: review
+                        .author_attribution
+                        .map(|a| a.display_name)
+                        .unwrap_or_default(),
+                    rating: review.rating.map(|r| r.round() as u8).unwrap_or(0),
+                    text: review.text.map(|t| t.text).unwrap_or_default(),
+                    relative_time: review.relative_publish_time_description,
+                })
+                .collect(),
+        })
     }
 }
 
@@ -134,6 +199,64 @@ struct Place {
     primary_type: Option<String>,
     #[serde(default)]
     photos: Vec<Photo>,
+    regular_opening_hours: Option<OpeningHours>,
+    utc_offset_minutes: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpeningHours {
+    #[serde(default)]
+    periods: Vec<OpeningPeriod>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpeningPeriod {
+    open: Option<TimePoint>,
+    close: Option<TimePoint>,
+}
+
+/// Proto3 JSON omits zero-valued fields, so `day` 0 (Sunday) and midnight
+/// hour/minute arrive as absent keys; default them to 0.
+#[derive(Debug, Deserialize)]
+struct TimePoint {
+    #[serde(default)]
+    day: u8,
+    #[serde(default)]
+    hour: u32,
+    #[serde(default)]
+    minute: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DetailsResponse {
+    website_uri: Option<String>,
+    national_phone_number: Option<String>,
+    google_maps_uri: Option<String>,
+    #[serde(default)]
+    reviews: Vec<GoogleReview>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GoogleReview {
+    author_attribution: Option<AuthorAttribution>,
+    rating: Option<f32>,
+    text: Option<ReviewText>,
+    relative_publish_time_description: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuthorAttribution {
+    #[serde(default)]
+    display_name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct ReviewText {
+    #[serde(default)]
+    text: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -158,9 +281,9 @@ mod tests {
 
     use axum::extract::State;
     use axum::http::{HeaderMap, StatusCode};
-    use axum::routing::post;
+    use axum::routing::{get, post};
     use axum::Router;
-    use dinnermate_core::{ProviderError, RestaurantProvider, RoomParams};
+    use dinnermate_core::{HoursPeriod, ProviderError, RestaurantProvider, RoomParams};
     use serde_json::{json, Value};
 
     use super::GooglePlacesProvider;
@@ -212,6 +335,7 @@ mod tests {
         };
         let app = Router::new()
             .route("/v1/places:searchNearby", post(handler))
+            .route("/v1/places/{id}", get(handler))
             .with_state(state);
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
@@ -327,7 +451,8 @@ mod tests {
             Some(
                 "places.id,places.displayName,places.formattedAddress,places.rating,\
                  places.userRatingCount,places.priceLevel,places.location,\
-                 places.primaryType,places.photos"
+                 places.primaryType,places.photos,places.regularOpeningHours,\
+                 places.utcOffsetMinutes"
             )
         );
         assert_eq!(
@@ -371,6 +496,131 @@ mod tests {
         let stub = spawn_stub(StatusCode::OK, "definitely not json").await;
 
         let err = provider(&stub.base_url).search(&params()).await.unwrap_err();
+
+        assert!(
+            matches!(err, ProviderError::InvalidResponse(_)),
+            "expected InvalidResponse, got {err:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn maps_opening_hours_and_utc_offset_with_zero_padding() {
+        let body = json!({
+            "places": [
+                {
+                    "id": "ChIJhours",
+                    "displayName": {"text": "Night Owl"},
+                    "location": {"latitude": 40.761, "longitude": -111.891},
+                    "utcOffsetMinutes": -360,
+                    "regularOpeningHours": {
+                        "periods": [
+                            // Proto3 JSON omits zero-valued hour/minute/day.
+                            {"open": {"day": 1, "hour": 9, "minute": 5},
+                             "close": {"day": 1, "hour": 17}},
+                            {"open": {"hour": 11},
+                             "close": {"hour": 14, "minute": 30}},
+                            // Missing close (24h sentinel) must be skipped.
+                            {"open": {"day": 3, "hour": 8}}
+                        ]
+                    }
+                },
+                {
+                    "id": "ChIJnohours",
+                    "displayName": {"text": "Mystery Diner"},
+                    "location": {"latitude": 40.762, "longitude": -111.892}
+                }
+            ]
+        })
+        .to_string();
+        let stub = spawn_stub(StatusCode::OK, &body).await;
+
+        let restaurants = provider(&stub.base_url).search(&params()).await.unwrap();
+
+        assert_eq!(restaurants[0].utc_offset_minutes, Some(-360));
+        assert_eq!(
+            restaurants[0].hours,
+            Some(vec![
+                HoursPeriod { day: 1, open: "09:05".into(), close: "17:00".into() },
+                HoursPeriod { day: 0, open: "11:00".into(), close: "14:30".into() },
+            ])
+        );
+        assert_eq!(restaurants[1].hours, None);
+        assert_eq!(restaurants[1].utc_offset_minutes, None);
+    }
+
+    fn canned_details(review_count: usize) -> String {
+        let reviews: Vec<Value> = (0..review_count)
+            .map(|i| {
+                json!({
+                    "authorAttribution": {"displayName": format!("Reviewer {i}")},
+                    "rating": 5,
+                    "text": {"text": format!("Review text {i}")},
+                    "relativePublishTimeDescription": "2 months ago"
+                })
+            })
+            .collect();
+        json!({
+            "websiteUri": "https://thai-palace.example.com",
+            "nationalPhoneNumber": "(801) 555-0100",
+            "googleMapsUri": "https://maps.google.com/?cid=123",
+            "reviews": reviews
+        })
+        .to_string()
+    }
+
+    #[tokio::test]
+    async fn details_maps_full_payload_and_truncates_reviews_to_five() {
+        let stub = spawn_stub(StatusCode::OK, &canned_details(6)).await;
+
+        let details = provider(&stub.base_url).details("ChIJfull").await.unwrap();
+
+        assert_eq!(details.website.as_deref(), Some("https://thai-palace.example.com"));
+        assert_eq!(details.phone.as_deref(), Some("(801) 555-0100"));
+        assert_eq!(details.maps_url.as_deref(), Some("https://maps.google.com/?cid=123"));
+        assert_eq!(details.reviews.len(), 5, "six stub reviews must truncate to five");
+        let first = &details.reviews[0];
+        assert_eq!(first.author, "Reviewer 0");
+        assert_eq!(first.rating, 5);
+        assert_eq!(first.text, "Review text 0");
+        assert_eq!(first.relative_time.as_deref(), Some("2 months ago"));
+
+        let captured = stub.captured();
+        assert_eq!(
+            captured.headers.get("x-goog-api-key").map(|v| v.to_str().unwrap()),
+            Some("test-key")
+        );
+        assert_eq!(
+            captured.headers.get("x-goog-fieldmask").map(|v| v.to_str().unwrap()),
+            Some("websiteUri,nationalPhoneNumber,googleMapsUri,reviews")
+        );
+    }
+
+    #[tokio::test]
+    async fn details_non_success_status_maps_to_unavailable() {
+        let stub = spawn_stub(
+            StatusCode::FORBIDDEN,
+            r#"{"error":{"message":"API key not authorized"}}"#,
+        )
+        .await;
+
+        let err = provider(&stub.base_url).details("ChIJfull").await.unwrap_err();
+
+        match err {
+            ProviderError::Unavailable(message) => {
+                assert!(
+                    message.contains("403") && message.contains("API key not authorized"),
+                    "unexpected message: {message}"
+                );
+            }
+            other => panic!("expected Unavailable, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn details_unparseable_body_maps_to_invalid_response() {
+        let stub = spawn_stub(StatusCode::OK, "definitely not json").await;
+
+        let err = provider(&stub.base_url).details("ChIJfull").await.unwrap_err();
 
         assert!(
             matches!(err, ProviderError::InvalidResponse(_)),
