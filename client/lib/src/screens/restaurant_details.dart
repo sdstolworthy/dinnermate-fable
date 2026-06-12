@@ -13,7 +13,8 @@ import '../widgets/status_views.dart';
 DateTime _defaultNowUtc() => DateTime.now().toUtc();
 
 Widget _osmMap(BuildContext context, Restaurant restaurant) {
-  final point = LatLng(restaurant.lat, restaurant.lng);
+  // Only called when both coordinates are known (see _body).
+  final point = LatLng(restaurant.lat!, restaurant.lng!);
   return FlutterMap(
     options: MapOptions(
       initialCenter: point,
@@ -121,8 +122,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
     final mapsUrl = details.mapsUrl;
     if (mapsUrl != null) return Uri.parse(mapsUrl);
     final restaurant = details.restaurant;
-    return Uri.parse('https://www.google.com/maps/search/?api=1'
-        '&query=${restaurant.lat},${restaurant.lng}');
+    final lat = restaurant.lat;
+    final lng = restaurant.lng;
+    final query = lat == null || lng == null
+        ? Uri.encodeComponent(restaurant.name)
+        : '$lat,$lng';
+    return Uri.parse(
+        'https://www.google.com/maps/search/?api=1&query=$query');
   }
 
   /// Day index (0=Sun..6=Sat) in the restaurant's local time when the
@@ -187,14 +193,17 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
                     style: theme.textTheme.bodyLarge
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
-                  const SizedBox(height: 16),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: SizedBox(
-                      height: 200,
-                      child: widget.mapBuilder(context, restaurant),
+                  // v3 Task 6: dedicated no-coords layout; interim hide.
+                  if (restaurant.lat != null && restaurant.lng != null) ...[
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: SizedBox(
+                        height: 200,
+                        child: widget.mapBuilder(context, restaurant),
+                      ),
                     ),
-                  ),
+                  ],
                   _actionRow(details),
                   if (restaurant.hours != null) _hoursBlock(restaurant),
                   if (details.reviews.isNotEmpty) _reviews(details.reviews),
@@ -208,13 +217,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen> {
   }
 
   Widget _heroHeader(Restaurant restaurant) {
+    // v3 Task 6: null cuisine gets the dedicated neutral warm gradient.
+    final cuisine = restaurant.cuisine ?? '';
     return Container(
       height: 160,
-      decoration:
-          BoxDecoration(gradient: gradientForCuisine(restaurant.cuisine)),
+      decoration: BoxDecoration(gradient: gradientForCuisine(cuisine)),
       child: Center(
         child: Text(
-          emojiForCuisine(restaurant.cuisine),
+          emojiForCuisine(cuisine),
           style: const TextStyle(fontSize: 72),
         ),
       ),

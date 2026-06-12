@@ -28,28 +28,31 @@ class Restaurant {
   const Restaurant({
     required this.id,
     required this.name,
-    required this.cuisine,
-    required this.priceLevel,
-    required this.rating,
-    required this.ratingCount,
+    this.cuisine,
+    this.priceLevel,
+    this.rating,
+    this.ratingCount,
     required this.address,
     this.photoUrl,
-    required this.lat,
-    required this.lng,
+    this.lat,
+    this.lng,
     this.hours,
     this.utcOffsetMinutes,
   });
 
   final String id;
   final String name;
-  final String cuisine;
-  final int priceLevel;
-  final double rating;
-  final int ratingCount;
+
+  /// Null = unknown, on all of these: OSM has no ratings, list decks have
+  /// no coordinates. Address stays non-null (may be "").
+  final String? cuisine;
+  final int? priceLevel;
+  final double? rating;
+  final int? ratingCount;
   final String address;
   final String? photoUrl;
-  final double lat;
-  final double lng;
+  final double? lat;
+  final double? lng;
 
   /// Null = unknown (also when a v1 server omits the key entirely).
   final List<HoursPeriod>? hours;
@@ -58,14 +61,14 @@ class Restaurant {
   factory Restaurant.fromJson(Map<String, dynamic> json) => Restaurant(
         id: json['id'] as String,
         name: json['name'] as String,
-        cuisine: json['cuisine'] as String,
-        priceLevel: json['price_level'] as int,
-        rating: _asDouble(json['rating']),
-        ratingCount: json['rating_count'] as int,
+        cuisine: json['cuisine'] as String?,
+        priceLevel: json['price_level'] as int?,
+        rating: json['rating'] == null ? null : _asDouble(json['rating']),
+        ratingCount: json['rating_count'] as int?,
         address: json['address'] as String,
         photoUrl: json['photo_url'] as String?,
-        lat: _asDouble(json['lat']),
-        lng: _asDouble(json['lng']),
+        lat: json['lat'] == null ? null : _asDouble(json['lat']),
+        lng: json['lng'] == null ? null : _asDouble(json['lng']),
         hours: (json['hours'] as List?)
             ?.map((e) => HoursPeriod.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -168,6 +171,7 @@ class Room {
     required this.priceMax,
     required this.minRating,
     required this.createdAt,
+    this.sourceListName,
   });
 
   final String id;
@@ -183,6 +187,10 @@ class Room {
   final double minRating;
   final DateTime createdAt;
 
+  /// Set when the room was created from a curated list (v3); null for
+  /// search-parameter rooms and v1/v2 servers that omit the key.
+  final String? sourceListName;
+
   factory Room.fromJson(Map<String, dynamic> json) => Room(
         id: json['id'] as String,
         code: json['code'] as String,
@@ -196,6 +204,7 @@ class Room {
         priceMax: json['price_max'] as int,
         minRating: _asDouble(json['min_rating']),
         createdAt: DateTime.parse(json['created_at'] as String),
+        sourceListName: json['source_list_name'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -211,6 +220,7 @@ class Room {
         'price_max': priceMax,
         'min_rating': minRating,
         'created_at': createdAt.toUtc().toIso8601String(),
+        if (sourceListName != null) 'source_list_name': sourceListName,
       };
 }
 

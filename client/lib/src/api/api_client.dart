@@ -17,11 +17,19 @@ class ApiException implements Exception {
 }
 
 class RoomDetail {
-  const RoomDetail({required this.room, required this.deck, this.me});
+  const RoomDetail({
+    required this.room,
+    required this.deck,
+    this.me,
+    this.participants = const [],
+  });
 
   final Room room;
   final List<Restaurant> deck;
   final Participant? me;
+
+  /// Display names, joined_at asc. Empty on v1/v2 servers.
+  final List<String> participants;
 }
 
 class MatchesResult {
@@ -43,6 +51,15 @@ class ApiClient {
     return (_room(json['room']), _deck(json['deck']));
   }
 
+  Future<(Room, List<Restaurant>)> createRoomFromList(String listCode,
+      {String? name}) async {
+    final json = await _send('POST', '/rooms/from-list', body: {
+      'list_code': listCode,
+      if (name != null) 'name': name,
+    });
+    return (_room(json['room']), _deck(json['deck']));
+  }
+
   Future<RoomDetail> getRoom(String code) async {
     final json = await _send('GET', '/rooms/$code');
     return RoomDetail(
@@ -51,6 +68,9 @@ class ApiClient {
       me: json['me'] == null
           ? null
           : Participant.fromJson(json['me'] as Map<String, dynamic>),
+      participants: ((json['participants'] as List?) ?? const [])
+          .map((e) => (e as Map<String, dynamic>)['display_name'] as String)
+          .toList(),
     );
   }
 

@@ -50,6 +50,24 @@ void main() {
       roundTrip: (j) => Restaurant.fromJson(j).toJson(),
     ),
     (
+      name: 'Restaurant with all optional data null',
+      json: {
+        'id': 'list-6f1f7a3e-0000-4000-8000-000000000009',
+        'name': 'That ramen place downtown',
+        'cuisine': null,
+        'price_level': null,
+        'rating': null,
+        'rating_count': null,
+        'address': '',
+        'photo_url': null,
+        'lat': null,
+        'lng': null,
+        'hours': null,
+        'utc_offset_minutes': null,
+      },
+      roundTrip: (j) => Restaurant.fromJson(j).toJson(),
+    ),
+    (
       name: 'HoursPeriod',
       json: {'day': 0, 'open': '09:00', 'close': '14:30'},
       roundTrip: (j) => HoursPeriod.fromJson(j).toJson(),
@@ -134,6 +152,25 @@ void main() {
       roundTrip: (j) => Room.fromJson(j).toJson(),
     ),
     (
+      name: 'Room with source_list_name',
+      json: {
+        'id': '6f1f7a3e-0000-4000-8000-000000000001',
+        'code': 'ABC234',
+        'name': null,
+        'location_label': 'Date nights',
+        'lat': 0.0,
+        'lng': 0.0,
+        'radius_m': 1000,
+        'cuisines': <String>[],
+        'price_min': 1,
+        'price_max': 4,
+        'min_rating': 0.0,
+        'created_at': '2026-06-11T10:00:00.000Z',
+        'source_list_name': 'Date nights',
+      },
+      roundTrip: (j) => Room.fromJson(j).toJson(),
+    ),
+    (
       name: 'Participant',
       json: {
         'id': '6f1f7a3e-0000-4000-8000-000000000002',
@@ -212,6 +249,44 @@ void main() {
 
       expect(restaurant.hours, isNull);
       expect(restaurant.utcOffsetMinutes, isNull);
+    });
+
+    test('Restaurant tolerates absent optional data keys', () {
+      final json = {..._restaurantJson}
+        ..remove('cuisine')
+        ..remove('price_level')
+        ..remove('rating')
+        ..remove('rating_count')
+        ..remove('lat')
+        ..remove('lng');
+
+      final restaurant = Restaurant.fromJson(json);
+
+      expect(restaurant.cuisine, isNull);
+      expect(restaurant.priceLevel, isNull);
+      expect(restaurant.rating, isNull);
+      expect(restaurant.ratingCount, isNull);
+      expect(restaurant.lat, isNull);
+      expect(restaurant.lng, isNull);
+    });
+
+    test('Room tolerates an absent source_list_name key', () {
+      final room = Room.fromJson({
+        'id': '6f1f7a3e-0000-4000-8000-000000000001',
+        'code': 'ABC234',
+        'name': null,
+        'location_label': 'Salt Lake City',
+        'lat': 40.76,
+        'lng': -111.89,
+        'radius_m': 5000,
+        'cuisines': <String>[],
+        'price_min': 1,
+        'price_max': 4,
+        'min_rating': 0.0,
+        'created_at': '2026-06-11T10:00:00.000Z',
+      });
+
+      expect(room.sourceListName, isNull);
     });
   });
 

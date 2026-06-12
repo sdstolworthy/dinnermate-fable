@@ -61,7 +61,12 @@ class MatchTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${restaurant.cuisine} · ${'\$' * restaurant.priceLevel}',
+                      // v3 Task 6: interim — show only the known parts.
+                      [
+                        if (restaurant.cuisine != null) restaurant.cuisine!,
+                        if (restaurant.priceLevel != null)
+                          '\$' * restaurant.priceLevel!,
+                      ].join(' · '),
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: scheme.outline),
                     ),
@@ -96,9 +101,10 @@ class MatchTile extends StatelessWidget {
   }
 
   Widget _avatar() {
+    final cuisine = restaurant.cuisine ?? '';
     final emoji = Center(
       child: Text(
-        emojiForCuisine(restaurant.cuisine),
+        emojiForCuisine(cuisine),
         style: const TextStyle(fontSize: 26),
       ),
     );
@@ -109,7 +115,7 @@ class MatchTile extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        gradient: gradientForCuisine(restaurant.cuisine),
+        gradient: gradientForCuisine(cuisine),
       ),
       child: url == null
           ? emoji

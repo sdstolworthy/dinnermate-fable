@@ -92,6 +92,84 @@ void main() {
     expect(deck.single.id, 'seed-001');
   });
 
+  test('createRoomFromList POSTs list_code (name omitted) and parses room+deck',
+      () async {
+    final store = InMemoryStore();
+    await store.write('dinnermate_user_id', 'user-123');
+    final mock = MockClient((request) async {
+      expect(request.method, 'POST');
+      expect(request.url.path, '/api/v1/rooms/from-list');
+      expect(request.headers['X-Dinnermate-User'], 'user-123');
+      expect(jsonDecode(request.body), {'list_code': 'XYZ789'});
+      return http.Response(
+          jsonEncode({
+            'room': {..._roomJson, 'source_list_name': 'Date nights'},
+            'deck': [_restaurantJson],
+          }),
+          201);
+    });
+
+    final (room, deck) =
+        await _client(mock, store: store).createRoomFromList('XYZ789');
+
+    expect(room.code, 'ABC234');
+    expect(room.sourceListName, 'Date nights');
+    expect(deck, hasLength(1));
+    expect(deck.single.id, 'seed-001');
+  });
+
+  test('createRoomFromList includes a non-null name in the body', () async {
+    final mock = MockClient((request) async {
+      expect(jsonDecode(request.body),
+          {'list_code': 'XYZ789', 'name': 'Friday dinner'});
+      return http.Response(
+          jsonEncode({'room': _roomJson, 'deck': <Map<String, dynamic>>[]}),
+          201);
+    });
+
+    final (room, deck) = await _client(mock)
+        .createRoomFromList('XYZ789', name: 'Friday dinner');
+
+    expect(room.code, 'ABC234');
+    expect(deck, isEmpty);
+  });
+
+  test('getRoom parses participants display names in order', () async {
+    final mock = MockClient((request) async {
+      expect(request.url.path, '/api/v1/rooms/ABC234');
+      return http.Response(
+          jsonEncode({
+            'room': _roomJson,
+            'deck': [_restaurantJson],
+            'me': null,
+            'participants': [
+              {'display_name': 'Alice'},
+              {'display_name': 'Bob'},
+            ],
+          }),
+          200);
+    });
+
+    final detail = await _client(mock).getRoom('ABC234');
+
+    expect(detail.participants, ['Alice', 'Bob']);
+  });
+
+  test('getRoom defaults participants to empty when the key is absent',
+      () async {
+    final mock = MockClient((request) async => http.Response(
+        jsonEncode({
+          'room': _roomJson,
+          'deck': <Map<String, dynamic>>[],
+          'me': null,
+        }),
+        200));
+
+    final detail = await _client(mock).getRoom('ABC234');
+
+    expect(detail.participants, isEmpty);
+  });
+
   test('getMatches parses entries and participant_count', () async {
     final mock = MockClient((request) async {
       expect(request.url.path, '/api/v1/rooms/ABC234/matches');
