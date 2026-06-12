@@ -329,8 +329,8 @@ Behavior requirements (see spec §Flutter client + §vibe):
 
 **Files:** Create `OVERNIGHT_REPORT.md` (decisions + rationale links to spec, what's verified with command output, what's NOT verified (Google provider live, Coolify deploy), how to run, suggested next steps), finalize `README.md`.
 
-- [ ] Run full verification suite once more (core+db+api tests, flutter analyze+test, smoke) and paste real output into report
-- [ ] Commit `docs: overnight report`
+- [x] Run full verification suite once more (core+db+api tests, flutter analyze+test, smoke) and paste real output into report
+- [x] Commit `docs: overnight report`
 
 ---
 
