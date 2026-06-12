@@ -1,0 +1,702 @@
+openapi: 3.1.0
+info:
+  title: Dinnermate API
+  version: 1.0.0
+  description: >
+    Group restaurant decision-making: create a room, share its code, swipe,
+    and see matches. Shareable lists ride along. All non-health routes
+    identify the caller via the `X-Dinnermate-User` header (a client-generated
+    UUID); there is no authentication beyond it in v1.
+
+servers:
+  - url: /
+    description: Same-origin (nginx proxies /api to the API container)
+
+tags:
+  - name: rooms
+    description: Swipe rooms, participants, swipes, and matches
+  - name: lists
+    description: Shareable restaurant lists
+  - name: meta
+    description: Health and operational endpoints
+
+security:
+  - userId: []
+
+paths:
+  /api/v1/rooms:
+    post:
+      tags: [rooms]
+      operationId: createRoom
+      summary: Create a room
+      description: >
+        Validates params, fetches and filters a restaurant deck from the
+        provider, and snapshots it. The creator is NOT auto-joined; call
+        join afterwards.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+      responses:
+        '201':
+          description: Room created with its snapshotted deck
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRoomResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+
+  /api/v1/rooms/{code}:
+    get:
+      tags: [rooms]
+      operationId: getRoom
+      summary: Get a room, its deck, and the caller's participant (if joined)
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: Room detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetRoomResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/rooms/{code}/join:
+    post:
+      tags: [rooms]
+      operationId: joinRoom
+      summary: Join a room
+      description: Idempotent; re-joining returns the existing participant.
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRequest'
+      responses:
+        '200':
+          description: Participant (new or existing)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/rooms/{code}/swipes:
+    post:
+      tags: [rooms]
+      operationId: recordSwipe
+      summary: Record a swipe
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwipeRequest'
+      responses:
+        '201':
+          description: Swipe recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyObject'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/v1/rooms/{code}/matches:
+    get:
+      tags: [rooms]
+      operationId: getMatches
+      summary: Liked restaurants ranked by like count
+      parameters:
+        - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: Matches sorted by like_count desc, then last_liked_at desc
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchesResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/lists:
+    post:
+      tags: [lists]
+      operationId: createList
+      summary: Create a list owned by the caller
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListRequest'
+      responses:
+        '201':
+          description: List created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateListResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+    get:
+      tags: [lists]
+      operationId: myLists
+      summary: Lists owned by the caller
+      responses:
+        '200':
+          description: Caller's lists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyListsResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+
+  /api/v1/lists/{code}:
+    get:
+      tags: [lists]
+      operationId: getList
+      summary: Get a list and its items by share code
+      description: Lists are open by code; any caller with the code can read.
+      parameters:
+        - $ref: '#/components/parameters/ListCode'
+      responses:
+        '200':
+          description: List detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDetailResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/lists/{code}/items:
+    post:
+      tags: [lists]
+      operationId: addListItem
+      summary: Add an item to a list
+      description: Any caller with the code may add items, not only the owner.
+      parameters:
+        - $ref: '#/components/parameters/ListCode'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewListItemRequest'
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddItemResponse'
+        '400':
+          $ref: '#/components/responses/MissingUser'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /healthz:
+    get:
+      tags: [meta]
+      operationId: healthz
+      summary: Liveness check
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            text/plain:
+              schema:
+                type: string
+                const: ok
+
+components:
+  securitySchemes:
+    userId:
+      type: apiKey
+      in: header
+      name: X-Dinnermate-User
+      description: >
+        Client-generated UUID identifying the caller. Absent or non-UUID
+        values yield 400 with code MISSING_USER.
+
+  parameters:
+    RoomCode:
+      name: code
+      in: path
+      required: true
+      description: Six-character room code (alphabet ABCDEFGHJKMNPQRSTUVWXYZ23456789)
+      schema:
+        $ref: '#/components/schemas/ShareCode'
+    ListCode:
+      name: code
+      in: path
+      required: true
+      description: Six-character list code (alphabet ABCDEFGHJKMNPQRSTUVWXYZ23456789)
+      schema:
+        $ref: '#/components/schemas/ShareCode'
+
+  responses:
+    MissingUser:
+      description: X-Dinnermate-User header absent or not a UUID (code MISSING_USER)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Caller is not a participant of the room (code NOT_IN_ROOM)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: No room/list with that code (code ROOM_NOT_FOUND or LIST_NOT_FOUND)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Caller already swiped this restaurant (code ALREADY_SWIPED)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnprocessableEntity:
+      description: Invalid params or unknown restaurant (code INVALID_PARAMS or UNKNOWN_RESTAURANT)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadGateway:
+      description: Restaurant provider unavailable or returned garbage (code PROVIDER_UNAVAILABLE)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    ShareCode:
+      type: string
+      pattern: '^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$'
+      examples: [TQ4K7M]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - MISSING_USER
+                - ROOM_NOT_FOUND
+                - LIST_NOT_FOUND
+                - NOT_IN_ROOM
+                - ALREADY_SWIPED
+                - UNKNOWN_RESTAURANT
+                - INVALID_PARAMS
+                - PROVIDER_UNAVAILABLE
+                - INTERNAL
+            message:
+              type: string
+
+    EmptyObject:
+      type: object
+      additionalProperties: false
+
+    CreateRoomRequest:
+      type: object
+      required:
+        - location_label
+        - lat
+        - lng
+        - radius_m
+        - cuisines
+        - price_min
+        - price_max
+        - min_rating
+      properties:
+        name:
+          type: [string, 'null']
+        location_label:
+          type: string
+        lat:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        lng:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+        radius_m:
+          type: integer
+          minimum: 100
+          maximum: 40000
+        cuisines:
+          type: array
+          items:
+            type: string
+          description: Lowercase cuisine tags; empty array means all cuisines.
+        price_min:
+          type: integer
+          minimum: 1
+          maximum: 4
+        price_max:
+          type: integer
+          minimum: 1
+          maximum: 4
+          description: Must be >= price_min.
+        min_rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+
+    Room:
+      type: object
+      description: Room with its search params flattened (same field names as CreateRoomRequest).
+      required:
+        - id
+        - code
+        - name
+        - location_label
+        - lat
+        - lng
+        - radius_m
+        - cuisines
+        - price_min
+        - price_max
+        - min_rating
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          $ref: '#/components/schemas/ShareCode'
+        name:
+          type: [string, 'null']
+        location_label:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+        radius_m:
+          type: integer
+        cuisines:
+          type: array
+          items:
+            type: string
+        price_min:
+          type: integer
+        price_max:
+          type: integer
+        min_rating:
+          type: number
+          format: float
+        created_at:
+          type: string
+          format: date-time
+
+    Restaurant:
+      type: object
+      required:
+        - id
+        - name
+        - cuisine
+        - price_level
+        - rating
+        - rating_count
+        - address
+        - photo_url
+        - lat
+        - lng
+      properties:
+        id:
+          type: string
+          description: Provider-scoped id, e.g. "seed-001" or a Google place id.
+        name:
+          type: string
+        cuisine:
+          type: string
+          description: Lowercase single tag, e.g. "thai".
+        price_level:
+          type: integer
+          minimum: 1
+          maximum: 4
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+        rating_count:
+          type: integer
+          minimum: 0
+        address:
+          type: string
+        photo_url:
+          type: [string, 'null']
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+
+    Participant:
+      type: object
+      required: [id, room_id, user_id, display_name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+
+    Match:
+      type: object
+      required: [restaurant, like_count, last_liked_at]
+      properties:
+        restaurant:
+          $ref: '#/components/schemas/Restaurant'
+        like_count:
+          type: integer
+          format: int64
+        last_liked_at:
+          type: string
+          format: date-time
+
+    CreateRoomResponse:
+      type: object
+      required: [room, deck]
+      properties:
+        room:
+          $ref: '#/components/schemas/Room'
+        deck:
+          type: array
+          items:
+            $ref: '#/components/schemas/Restaurant'
+
+    GetRoomResponse:
+      type: object
+      required: [room, deck, me]
+      properties:
+        room:
+          $ref: '#/components/schemas/Room'
+        deck:
+          type: array
+          items:
+            $ref: '#/components/schemas/Restaurant'
+        me:
+          oneOf:
+            - $ref: '#/components/schemas/Participant'
+            - type: 'null'
+          description: The caller's participant if they have joined, else null.
+
+    JoinRequest:
+      type: object
+      required: [display_name]
+      properties:
+        display_name:
+          type: string
+
+    JoinResponse:
+      type: object
+      required: [participant]
+      properties:
+        participant:
+          $ref: '#/components/schemas/Participant'
+
+    SwipeRequest:
+      type: object
+      required: [restaurant_id, liked]
+      properties:
+        restaurant_id:
+          type: string
+        liked:
+          type: boolean
+
+    MatchesResponse:
+      type: object
+      required: [matches, participant_count]
+      properties:
+        matches:
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
+        participant_count:
+          type: integer
+          format: int64
+
+    CreateListRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    List:
+      type: object
+      required: [id, code, name, owner_user_id, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          $ref: '#/components/schemas/ShareCode'
+        name:
+          type: string
+        owner_user_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    ListItem:
+      type: object
+      required:
+        - id
+        - list_id
+        - name
+        - cuisine
+        - price_level
+        - rating
+        - address
+        - photo_url
+        - added_by_user_id
+        - source_restaurant_id
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        list_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        cuisine:
+          type: [string, 'null']
+        price_level:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 4
+        rating:
+          type: [number, 'null']
+          format: float
+        address:
+          type: [string, 'null']
+        photo_url:
+          type: [string, 'null']
+        added_by_user_id:
+          type: string
+          format: uuid
+        source_restaurant_id:
+          type: [string, 'null']
+        created_at:
+          type: string
+          format: date-time
+
+    NewListItemRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        cuisine:
+          type: [string, 'null']
+        price_level:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 4
+        rating:
+          type: [number, 'null']
+          format: float
+        address:
+          type: [string, 'null']
+        photo_url:
+          type: [string, 'null']
+        source_restaurant_id:
+          type: [string, 'null']
+
+    CreateListResponse:
+      type: object
+      required: [list]
+      properties:
+        list:
+          $ref: '#/components/schemas/List'
+
+    MyListsResponse:
+      type: object
+      required: [lists]
+      properties:
+        lists:
+          type: array
+          items:
+            $ref: '#/components/schemas/List'
+
+    ListDetailResponse:
+      type: object
+      required: [list, items]
+      properties:
+        list:
+          $ref: '#/components/schemas/List'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ListItem'
+
+    AddItemResponse:
+      type: object
+      required: [item]
+      properties:
+        item:
+          $ref: '#/components/schemas/ListItem'

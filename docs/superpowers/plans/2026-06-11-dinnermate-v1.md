@@ -272,8 +272,8 @@ Dataset: 60 restaurants, ids `seed-001..seed-060`, ≥8 cuisines (mexican, thai,
 
 **Files:** Create `server/specs/openapi.yaml` covering every route/DTO/status code from the table above.
 
-- [ ] Validate: `python3 -c "import yaml; yaml.safe_load(open('server/specs/openapi.yaml'))"` → no output
-- [ ] Commit `docs(api): openapi spec`
+- [x] Validate: `python3 -c "import yaml; yaml.safe_load(open('server/specs/openapi.yaml'))"` → no output
+- [x] Commit `docs(api): openapi spec`
 
 ## Task 7: GooglePlacesProvider
 
