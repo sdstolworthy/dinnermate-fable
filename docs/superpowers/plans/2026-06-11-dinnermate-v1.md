@@ -256,8 +256,8 @@ Dataset: 60 restaurants, ids `seed-001..seed-060`, ≥8 cuisines (mexican, thai,
 
 `PgRoomRepo`/`PgListRepo` implement core traits with `sqlx::query` (runtime-checked — no sqlx offline/prepare complexity). `record_swipe`: map unique-violation (`23505`) to `RepoError::Conflict`. `pool.rs`: `connect_and_migrate(url)` runs `sqlx::migrate!("../../migrations")`.
 
-- [ ] Tests (each in fresh schema or serialized): create+find_by_code roundtrip incl. deck order by position; join unique(room,user) → second join via `find_participant`; record_swipe duplicate → Conflict; matches query ordering (3 participants, varied likes — assert exact order and counts); lists roundtrip + add_item + lists_for_owner
-- [ ] Run: `./scripts/test-db.sh` → PASS; commit `feat(db): postgres repos and initial migration`
+- [x] Tests (each in fresh schema or serialized): create+find_by_code roundtrip incl. deck order by position; join unique(room,user) → second join via `find_participant`; record_swipe duplicate → Conflict; matches query ordering (3 participants, varied likes — assert exact order and counts); lists roundtrip + add_item + lists_for_owner
+- [x] Run: `./scripts/test-db.sh` → PASS; commit `feat(db): postgres repos and initial migration`
 
 ## Task 5: dinnermate-api — axum server + integration tests
 

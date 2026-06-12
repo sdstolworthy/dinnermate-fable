@@ -338,6 +338,7 @@ dependencies = [
  "dinnermate-core",
  "sqlx",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 
