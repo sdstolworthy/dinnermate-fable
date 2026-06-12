@@ -62,6 +62,8 @@ mod tests {
             photo_url: None,
             lat: CENTER_LAT,
             lng: CENTER_LNG,
+            hours: None,
+            utc_offset_minutes: None,
         }
     }
 

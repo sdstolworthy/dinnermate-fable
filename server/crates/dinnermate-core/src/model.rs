@@ -4,6 +4,16 @@ use uuid::Uuid;
 
 use crate::error::CoreError;
 
+/// Weekly opening span in the restaurant's local time.
+/// `day`: 0 = Sunday .. 6 = Saturday; `open`/`close` are "HH:MM".
+/// `close` earlier than `open` means the span crosses midnight into the next day.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HoursPeriod {
+    pub day: u8,
+    pub open: String,
+    pub close: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Restaurant {
     /// Provider-scoped id, e.g. "seed-001".
@@ -18,6 +28,11 @@ pub struct Restaurant {
     pub photo_url: Option<String>,
     pub lat: f64,
     pub lng: f64,
+    /// None = hours unknown (e.g. pre-v2 rows, providers without hours data).
+    #[serde(default)]
+    pub hours: Option<Vec<HoursPeriod>>,
+    #[serde(default)]
+    pub utc_offset_minutes: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

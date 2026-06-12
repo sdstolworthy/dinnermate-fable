@@ -45,6 +45,9 @@ impl GooglePlacesProvider {
             photo_url,
             lat: place.location.latitude,
             lng: place.location.longitude,
+            // Hours mapping arrives with the field-mask additions in a later task.
+            hours: None,
+            utc_offset_minutes: None,
         }
     }
 }

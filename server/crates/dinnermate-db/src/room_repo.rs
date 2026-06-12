@@ -84,6 +84,9 @@ impl From<RestaurantRow> for Restaurant {
             photo_url: row.photo_url,
             lat: row.lat,
             lng: row.lng,
+            // Columns land in migration 0002; persisted in a later task.
+            hours: None,
+            utc_offset_minutes: None,
         }
     }
 }

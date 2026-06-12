@@ -31,6 +31,8 @@ pub fn restaurant(id: &str, name: &str, cuisine: &str, price: u8, rating: f32) -
         photo_url: None,
         lat: 40.7600,
         lng: -111.8900,
+        hours: None,
+        utc_offset_minutes: None,
     }
 }
 

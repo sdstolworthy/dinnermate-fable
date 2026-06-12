@@ -37,6 +37,8 @@ fn restaurant(id: &str, name: &str) -> Restaurant {
         photo_url: Some(format!("https://example.com/{id}.jpg")),
         lat: 40.7601,
         lng: -111.8902,
+        hours: None,
+        utc_offset_minutes: None,
     }
 }
 
