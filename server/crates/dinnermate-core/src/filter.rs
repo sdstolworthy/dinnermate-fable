@@ -1,3 +1,4 @@
+use crate::hours::{open_status, OpenStatus};
 use crate::model::{Restaurant, RoomParams};
 
 /// Mean Earth radius in meters (IUGG); fine for city-scale distances.
@@ -16,8 +17,9 @@ pub fn haversine_m(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
 ///
 /// Fairness rule: unknown passes. Each predicate only excludes a restaurant
 /// when the field is `Some` and fails; `None` (data the provider doesn't
-/// have) never disqualifies. Ordering: rated before unrated, rating desc
-/// within rated, then name asc.
+/// have) never disqualifies. When `eat_at_utc` is set, places `Closed` at
+/// that instant are excluded; `Open` and `Unknown` pass. Ordering: rated
+/// before unrated, rating desc within rated, then name asc.
 pub fn apply(params: &RoomParams, restaurants: Vec<Restaurant>) -> Vec<Restaurant> {
     let mut deck: Vec<Restaurant> = restaurants
         .into_iter()
@@ -31,6 +33,12 @@ pub fn apply(params: &RoomParams, restaurants: Vec<Restaurant>) -> Vec<Restauran
                 && r.rating.is_none_or(|rating| rating >= params.min_rating)
                 && r.lat.zip(r.lng).is_none_or(|(lat, lng)| {
                     haversine_m(params.lat, params.lng, lat, lng) <= f64::from(params.radius_m)
+                })
+                && params.eat_at_utc.is_none_or(|eat_at| {
+                    !matches!(
+                        open_status(r.hours.as_deref(), r.utc_offset_minutes, eat_at),
+                        OpenStatus::Closed { .. }
+                    )
                 })
         })
         .collect();
@@ -65,6 +73,7 @@ mod tests {
             price_min: 1,
             price_max: 4,
             min_rating: 0.0,
+            eat_at_utc: None,
         }
     }
 
@@ -264,6 +273,68 @@ mod tests {
                     },
                 ],
                 vec!["ok"],
+            ),
+        ];
+        for (name, params, input, want_ids) in cases {
+            let got: Vec<String> = apply(&params, input).into_iter().map(|r| r.id).collect();
+            assert_eq!(got, want_ids, "{name}");
+        }
+    }
+
+    #[test]
+    fn eat_at_filter_table() {
+        use chrono::{TimeZone, Utc};
+
+        use crate::model::HoursPeriod;
+
+        // 2026-01-04 is a Sunday: 01-05 = Mon(1), 01-09 = Fri(5), 01-10 = Sat(6).
+        let monday_hours = vec![HoursPeriod { day: 1, open: "11:00".into(), close: "22:00".into() }];
+        let friday_late = vec![HoursPeriod { day: 5, open: "17:00".into(), close: "01:00".into() }];
+        let monday_lunch = Utc.with_ymd_and_hms(2026, 1, 5, 12, 0, 0).unwrap();
+        let monday_breakfast = Utc.with_ymd_and_hms(2026, 1, 5, 9, 0, 0).unwrap();
+        let saturday_after_midnight = Utc.with_ymd_and_hms(2026, 1, 10, 0, 30, 0).unwrap();
+
+        let with_hours = |id: &str, hours: Option<Vec<HoursPeriod>>, offset: Option<i32>| {
+            Restaurant { hours, utc_offset_minutes: offset, ..restaurant(id, id, "thai", 2, 4.0) }
+        };
+
+        type Case = (&'static str, RoomParams, Vec<Restaurant>, Vec<&'static str>);
+        let cases: Vec<Case> = vec![
+            (
+                "closed at eat_at excluded",
+                RoomParams { eat_at_utc: Some(monday_breakfast), ..base_params() },
+                vec![with_hours("closed", Some(monday_hours.clone()), Some(0))],
+                vec![],
+            ),
+            (
+                "open at eat_at passes",
+                RoomParams { eat_at_utc: Some(monday_lunch), ..base_params() },
+                vec![with_hours("open", Some(monday_hours.clone()), Some(0))],
+                vec!["open"],
+            ),
+            (
+                "hours None passes (Unknown, fairness)",
+                RoomParams { eat_at_utc: Some(monday_breakfast), ..base_params() },
+                vec![with_hours("no-hours", None, Some(0))],
+                vec!["no-hours"],
+            ),
+            (
+                "offset None passes (Unknown, fairness)",
+                RoomParams { eat_at_utc: Some(monday_breakfast), ..base_params() },
+                vec![with_hours("no-offset", Some(monday_hours.clone()), None)],
+                vec!["no-offset"],
+            ),
+            (
+                "eat_at None is a no-op",
+                base_params(),
+                vec![with_hours("any", Some(monday_hours.clone()), Some(0))],
+                vec!["any"],
+            ),
+            (
+                "midnight-crossing span open at 00:30 eat_at passes",
+                RoomParams { eat_at_utc: Some(saturday_after_midnight), ..base_params() },
+                vec![with_hours("late", Some(friday_late.clone()), Some(0))],
+                vec!["late"],
             ),
         ];
         for (name, params, input, want_ids) in cases {

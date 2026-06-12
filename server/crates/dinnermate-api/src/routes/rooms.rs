@@ -47,6 +47,7 @@ impl From<CreateRoomRequest> for CreateRoom {
                 price_min: req.price_min,
                 price_max: req.price_max,
                 min_rating: req.min_rating,
+                eat_at_utc: None, // mealtime Task2: wire from CreateRoomRequest.eat_at
             },
         }
     }

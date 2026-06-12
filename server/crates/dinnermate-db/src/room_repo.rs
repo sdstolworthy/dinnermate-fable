@@ -52,6 +52,7 @@ impl From<RoomRow> for Room {
                 price_min: row.price_min as u8,
                 price_max: row.price_max as u8,
                 min_rating: row.min_rating,
+                eat_at_utc: None, // mealtime Task2: map rooms.eat_at column
             },
             created_by: row.created_by,
             created_at: row.created_at,

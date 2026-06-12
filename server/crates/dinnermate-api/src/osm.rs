@@ -249,6 +249,7 @@ mod tests {
             price_min: 1,
             price_max: 4,
             min_rating: 0.0,
+            eat_at_utc: None,
         }
     }
 

@@ -57,6 +57,7 @@ fn room(code: &str) -> Room {
             price_min: 1,
             price_max: 3,
             min_rating: 3.5,
+            eat_at_utc: None,
         },
         created_by: Uuid::new_v4(),
         created_at: now_micros(),

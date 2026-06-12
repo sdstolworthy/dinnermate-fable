@@ -72,6 +72,7 @@ impl RoomService {
             price_min: 1,
             price_max: 4,
             min_rating: 0.0,
+            eat_at_utc: None,
         };
         let room = self
             .create_with_fresh_code(user_id, name, params, Some(source_list_name.to_string()), &deck)
@@ -546,6 +547,7 @@ mod tests {
                 price_min: 1,
                 price_max: 4,
                 min_rating: 0.0,
+                eat_at_utc: None,
             }
         );
         room.params.validate().expect("synthesized params must pass validation");

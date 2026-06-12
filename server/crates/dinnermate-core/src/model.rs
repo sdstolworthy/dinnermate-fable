@@ -49,6 +49,10 @@ pub struct RoomParams {
     pub price_min: u8,
     pub price_max: u8,
     pub min_rating: f32,
+    /// When set, the deck only keeps places open at this instant.
+    /// Unknown hours/offset still pass (fairness rule).
+    #[serde(default)]
+    pub eat_at_utc: Option<DateTime<Utc>>,
 }
 
 impl RoomParams {
@@ -167,6 +171,7 @@ mod tests {
             price_min: 1,
             price_max: 4,
             min_rating: 3.5,
+            eat_at_utc: None,
         }
     }
 
