@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import 'open_badge.dart';
+
+DateTime _defaultNowUtc() => DateTime.now().toUtc();
 
 const Map<String, String> _cuisineEmoji = {
   'mexican': '🌮',
@@ -72,17 +75,7 @@ class RestaurantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: cardDecoration(theme),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -135,6 +128,18 @@ class RestaurantCard extends StatelessWidget {
     );
   }
 
+  static BoxDecoration cardDecoration(ThemeData theme) => BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
+      );
+
   Widget _photo() {
     final placeholder = DecoratedBox(
       decoration: BoxDecoration(gradient: gradientForCuisine(restaurant.cuisine)),
@@ -153,4 +158,96 @@ class RestaurantCard extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) => placeholder,
     );
   }
+}
+
+/// Back face of the deck card (same dimensions and rounding as
+/// [RestaurantCard]): hours, full address and the snapshot stats.
+class RestaurantCardBack extends StatelessWidget {
+  const RestaurantCardBack({
+    super.key,
+    required this.restaurant,
+    this.nowUtc = _defaultNowUtc,
+  });
+
+  final Restaurant restaurant;
+
+  /// Injectable clock (UTC) for the open badge and the "Today" line.
+  final DateTime Function() nowUtc;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final todayLine = _todayHoursLine();
+    return Container(
+      decoration: RestaurantCard.cardDecoration(theme),
+      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            restaurant.name,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 14),
+          OpenBadge(
+            restaurant.hours,
+            restaurant.utcOffsetMinutes,
+            nowUtc: nowUtc,
+          ),
+          if (todayLine != null) ...[
+            const SizedBox(height: 10),
+            Text(todayLine, style: theme.textTheme.bodyMedium),
+          ],
+          const SizedBox(height: 18),
+          Text(restaurant.address, style: theme.textTheme.bodyMedium),
+          const Spacer(),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              CuisineChip(cuisine: restaurant.cuisine),
+              Text(
+                '\$' * restaurant.priceLevel,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                '★ ${restaurant.rating.toStringAsFixed(1)} '
+                '(${_groupThousands(restaurant.ratingCount)} ratings)',
+                style: theme.textTheme.titleSmall,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _todayHoursLine() {
+    final hours = restaurant.hours;
+    final offset = restaurant.utcOffsetMinutes;
+    if (hours == null || offset == null) return null;
+    final local = nowUtc().toUtc().add(Duration(minutes: offset));
+    final today = local.weekday % 7; // 0=Sun..6=Sat, as in hours.dart
+    final spans = [
+      for (final period in hours)
+        if (period.day == today) '${period.open}–${period.close}',
+    ];
+    return spans.isEmpty ? 'Today: closed' : 'Today: ${spans.join(', ')}';
+  }
+}
+
+String _groupThousands(int value) {
+  final digits = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return buffer.toString();
 }

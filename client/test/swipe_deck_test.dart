@@ -75,4 +75,54 @@ void main() {
     expect(harness.swipes, [('one', false), ('two', true)]);
     expect(harness.ended, isTrue);
   });
+
+  // The back face is identified by its "(N ratings)" stat, which the front
+  // never renders. Harness restaurants have no hours, so the back face is
+  // deterministic without a clock.
+  testWidgets('tap flips the top card to its back face and back to front',
+      (tester) async {
+    final harness = _Harness();
+    await tester.pumpWidget(harness.build());
+
+    expect(find.textContaining('ratings'), findsNothing);
+
+    await tester.tap(find.byType(SwipeDeck));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('ratings'), findsOneWidget);
+
+    await tester.tap(find.byType(SwipeDeck));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('ratings'), findsNothing);
+  });
+
+  testWidgets('drag past threshold while flipped still swipes and resets flip',
+      (tester) async {
+    final harness = _Harness();
+    await tester.pumpWidget(harness.build());
+
+    await tester.tap(find.byType(SwipeDeck));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('ratings'), findsOneWidget);
+
+    await tester.drag(find.byType(SwipeDeck), const Offset(420, 0));
+    await tester.pumpAndSettle();
+
+    expect(harness.swipes, [('one', true)]);
+    expect(find.text('Second Helping'), findsOneWidget);
+    expect(find.textContaining('ratings'), findsNothing);
+  });
+
+  testWidgets('programmatic like works while flipped', (tester) async {
+    final harness = _Harness();
+    await tester.pumpWidget(harness.build());
+
+    await tester.tap(find.byType(SwipeDeck));
+    await tester.pumpAndSettle();
+
+    harness.key.currentState!.like();
+    await tester.pumpAndSettle();
+
+    expect(harness.swipes, [('one', true)]);
+    expect(find.textContaining('ratings'), findsNothing);
+  });
 }

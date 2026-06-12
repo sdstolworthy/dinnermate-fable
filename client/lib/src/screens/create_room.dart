@@ -22,6 +22,8 @@ const _presets = [
   _CityPreset('Austin', 30.2672, -97.7431),
 ];
 
+enum TravelMode { walking, driving }
+
 const _cuisines = [
   'mexican',
   'thai',
@@ -49,7 +51,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _shareName = TextEditingController();
 
   _CityPreset _city = _presets.first;
-  double _radiusM = 5000;
+  TravelMode _travelMode = TravelMode.walking;
+  double _radiusM = 1000;
   final Set<String> _selectedCuisines = {};
   RangeValues _price = const RangeValues(1, 4);
   double _minRating = 0;
@@ -65,6 +68,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     _shareName.dispose();
     super.dispose();
   }
+
+  // Walking minutes at 80 m/min; `~/` matches the spec's "1.0 km · ~12 min
+  // walk" example (1000/80 = 12.5).
+  String get _radiusLabel => switch (_travelMode) {
+        TravelMode.walking => '${(_radiusM / 1000).toStringAsFixed(1)} km '
+            '· ~${_radiusM ~/ 80} min walk',
+        TravelMode.driving => '${(_radiusM / 1000).round()} km',
+      };
 
   Future<void> _create() async {
     final api = context.read<ApiClient>();
@@ -219,17 +230,35 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
               ],
             ),
             _section('How far'),
+            SegmentedButton<TravelMode>(
+              segments: const [
+                ButtonSegment(
+                  value: TravelMode.walking,
+                  label: Text('🚶 Walking'),
+                ),
+                ButtonSegment(
+                  value: TravelMode.driving,
+                  label: Text('🚗 Driving'),
+                ),
+              ],
+              selected: {_travelMode},
+              onSelectionChanged: (modes) => setState(() {
+                _travelMode = modes.first;
+                _radiusM = _travelMode == TravelMode.walking ? 1000 : 5000;
+              }),
+            ),
+            const SizedBox(height: 12),
             Text(
-              'Within ${(_radiusM / 1000).toStringAsFixed(1)} km',
+              'Within $_radiusLabel',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.outline),
             ),
             Slider(
               value: _radiusM,
-              min: 500,
-              max: 25000,
-              divisions: 49,
-              label: '${(_radiusM / 1000).toStringAsFixed(1)} km',
+              min: _travelMode == TravelMode.walking ? 250 : 2000,
+              max: _travelMode == TravelMode.walking ? 2000 : 40000,
+              divisions: _travelMode == TravelMode.walking ? 7 : 38,
+              label: _radiusLabel,
               onChanged: (value) => setState(() => _radiusM = value),
             ),
             _section('Cuisines'),

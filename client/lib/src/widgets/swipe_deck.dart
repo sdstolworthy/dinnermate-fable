@@ -8,7 +8,8 @@ import 'restaurant_card.dart';
 /// Draggable card stack. The top card follows the finger and rotates up to
 /// ±8°; releasing past 30% of the deck width flings it off and commits the
 /// swipe, otherwise it springs back. [SwipeDeckState.like]/[SwipeDeckState.nope]
-/// drive the same animation from buttons.
+/// drive the same animation from buttons. Tapping the top card flips it over
+/// (Y-rotation) to a details back face; advancing the deck resets to front.
 class SwipeDeck extends StatefulWidget {
   const SwipeDeck({
     super.key,
@@ -26,10 +27,11 @@ class SwipeDeck extends StatefulWidget {
 }
 
 class SwipeDeckState extends State<SwipeDeck>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   static const _maxAngle = 8 * math.pi / 180;
 
   late final AnimationController _controller;
+  late final AnimationController _flip;
   double _dragX = 0;
   double _width = 1;
   int _index = 0;
@@ -44,6 +46,22 @@ class SwipeDeckState extends State<SwipeDeck>
       vsync: this,
       duration: const Duration(milliseconds: 220),
     );
+    _flip = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  void _toggleFlip() {
+    if (_top == null) return;
+    switch (_flip.status) {
+      case AnimationStatus.dismissed:
+      case AnimationStatus.reverse:
+        _flip.forward();
+      case AnimationStatus.completed:
+      case AnimationStatus.forward:
+        _flip.reverse();
+    }
   }
 
   void like() => _flingOff(true);
@@ -83,6 +101,7 @@ class SwipeDeckState extends State<SwipeDeck>
 
   void _commit(bool liked) {
     final swiped = widget.restaurants[_index];
+    _flip.value = 0;
     setState(() {
       _index++;
       _dragX = 0;
@@ -94,7 +113,32 @@ class SwipeDeckState extends State<SwipeDeck>
   @override
   void dispose() {
     _controller.dispose();
+    _flip.dispose();
     super.dispose();
+  }
+
+  /// 3D Y-rotation between front and back; the child swaps at the halfway
+  /// point (and the back is pre-mirrored) so text is never shown reversed.
+  Widget _flippableCard(Restaurant restaurant) {
+    return AnimatedBuilder(
+      animation: _flip,
+      builder: (context, _) {
+        final showBack = _flip.value >= 0.5;
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateY(_flip.value * math.pi),
+          child: showBack
+              ? Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()..rotateY(math.pi),
+                  child: RestaurantCardBack(restaurant: restaurant),
+                )
+              : RestaurantCard(restaurant: restaurant),
+        );
+      },
+    );
   }
 
   @override
@@ -119,6 +163,7 @@ class SwipeDeckState extends State<SwipeDeck>
               child: RestaurantCard(restaurant: next),
             ),
           GestureDetector(
+            onTap: _toggleFlip,
             onHorizontalDragUpdate: _onDragUpdate,
             onHorizontalDragEnd: _onDragEnd,
             child: Transform.translate(
@@ -128,7 +173,7 @@ class SwipeDeckState extends State<SwipeDeck>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    RestaurantCard(restaurant: top),
+                    _flippableCard(top),
                     Positioned(
                       top: 24,
                       left: 24,
