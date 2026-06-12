@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Coral rounded-square background, full bleed. -->
+  <rect width="512" height="512" rx="112" fill="#FF7E6B"/>
+
+  <!-- Fork, tilted left, crossing the spoon at (256,330). -->
+  <g transform="translate(256 330) rotate(-25)" fill="#FFFFFF">
+    <rect x="-32" y="-238" width="12" height="76" rx="6"/>
+    <rect x="-6"  y="-238" width="12" height="76" rx="6"/>
+    <rect x="20"  y="-238" width="12" height="76" rx="6"/>
+    <rect x="-32" y="-178" width="64" height="36" rx="12"/>
+    <rect x="-9"  y="-150" width="18" height="240" rx="9"/>
+  </g>
+
+  <!-- Spoon, tilted right. -->
+  <g transform="translate(256 330) rotate(25)" fill="#FFFFFF">
+    <ellipse cx="0" cy="-190" rx="40" ry="55"/>
+    <rect x="-9" y="-150" width="18" height="240" rx="9"/>
+  </g>
+
+  <!-- Heart, centered above the crossing. -->
+  <path fill="#FFFFFF" d="M256 165
+    c -8 -14 -32 -12 -32 6
+    c 0 16 18 24 32 38
+    c 14 -14 32 -22 32 -38
+    c 0 -18 -24 -20 -32 -6
+    z"/>
+</svg>

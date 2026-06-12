@@ -2,7 +2,6 @@ server/target/
 client/build/
 client/.dart_tool/
 client/pubspec.lock
-client/web/
 client/.flutter-plugins*
 client/.idea/
 *.iml

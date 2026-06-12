@@ -18,9 +18,7 @@ WORKDIR /build
 COPY pubspec.yaml ./
 RUN flutter pub get
 
-# `web/` is gitignored — `flutter create` regenerates it from the template.
 COPY . .
-RUN flutter create . --platforms=web
 
 ARG API_BASE_URL=/api
 RUN flutter build web --release \
