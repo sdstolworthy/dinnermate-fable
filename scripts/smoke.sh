@@ -19,7 +19,9 @@ fail() {
 trap fail ERR
 
 if command -v jq >/dev/null 2>&1; then
-    json_get() { printf '%s' "$1" | jq -er "$2"; }
+    # -e would exit 1 when the extracted value is `false` (e.g. is_owner) —
+    # use -r and let the callers' string assertions catch missing paths.
+    json_get() { printf '%s' "$1" | jq -r "$2"; }
 else
     json_get() {
         printf '%s' "$1" | python3 -c '
@@ -156,6 +158,35 @@ assert_status 200
 ITEM_NAME=$(json_get "$BODY" '.items[0].name')
 [[ "$ITEM_NAME" == "Pago" ]] || fail
 echo "==> lists OK (code=$LIST_CODE, item=$ITEM_NAME)"
+
+STEP="user B joins list"
+request POST "$API/api/v1/lists/$LIST_CODE/join" "$USER_B"
+assert_status 200
+IS_OWNER=$(json_get "$BODY" '.is_owner')
+[[ "$IS_OWNER" == "false" || "$IS_OWNER" == "False" ]] || fail
+
+STEP="member B adds item"
+request POST "$API/api/v1/lists/$LIST_CODE/items" "$USER_B" '{"name": "Basil & Birch"}'
+assert_status 201
+
+STEP="non-member C add item is 403"
+USER_C=$(new_uuid)
+request POST "$API/api/v1/lists/$LIST_CODE/items" "$USER_C" '{"name": "Nope"}'
+assert_status 403
+
+STEP="owner A sees joined list count"
+request GET "$API/api/v1/lists" "$USER_B"
+assert_status 200
+B_LIST_CODE=$(json_get "$BODY" '.lists[0].code')
+[[ "$B_LIST_CODE" == "$LIST_CODE" ]] || fail
+echo "==> list membership OK (B joined, member add 201, stranger 403)"
+
+STEP="restaurant details endpoint"
+request GET "$API/api/v1/rooms/$CODE/restaurants/$DECK0/details" "$USER_A"
+assert_status 200
+DETAIL_ID=$(json_get "$BODY" '.restaurant.id')
+[[ "$DETAIL_ID" == "$DECK0" ]] || fail
+echo "==> details OK ($DETAIL_ID)"
 
 echo
 echo "SMOKE OK"
