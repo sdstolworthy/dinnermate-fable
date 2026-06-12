@@ -247,8 +247,8 @@ Workspace deps (pin in `[workspace.dependencies]`): axum 0.8 (macros), tokio 1 (
 
 Dataset: 60 restaurants, ids `seed-001..seed-060`, ≥8 cuisines (mexican, thai, italian, japanese, indian, american, chinese, mediterranean, korean, vietnamese), price levels 1–4 distributed, ratings 3.2–4.9 with varied rating_count, photo_url null (client renders cuisine-colored placeholder cards), coordinates clustered around a fictional downtown (40.7600±0.05, -111.8900±0.05) so radius filtering is exercisable. SeedProvider ignores lat/lng *center* (returns all; filter applies radius) — document in rustdoc.
 
-- [ ] Tests: JSON parses; 60 entries; all ids unique; all fields within validation ranges; `search` honors filter via service path
-- [ ] `cargo test -p dinnermate-core` → PASS; commit `feat(core): embedded seed restaurant provider`
+- [x] Tests: JSON parses; 60 entries; all ids unique; all fields within validation ranges; `search` honors filter via service path
+- [x] `cargo test -p dinnermate-core` → PASS; commit `feat(core): embedded seed restaurant provider`
 
 ## Task 4: dinnermate-db — migrations + repos
 
