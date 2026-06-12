@@ -37,3 +37,7 @@ Coolify does **not** back up this volume — room/swipe data is treated as dispo
 
 - `https://dinnermate.coolify.stolworthy.co/health.txt` → `ok` (web)
 - api container has an internal `/healthz` HEALTHCHECK that gates rolling deploys; it is not exposed through the web FQDN (nginx only proxies `/api/`).
+
+## v3: restaurant provider in production
+
+`RESTAURANT_PROVIDER=osm` (OpenStreetMap via Overpass) is the production provider as of v3 — real restaurants, no API key. `OVERPASS_URL` overrides the default `https://overpass-api.de` if the public instance gets slow (alternatives: `https://overpass.kumi.systems`). Fallbacks: `seed` (demo data, always works), `google` (best data; needs `GOOGLE_PLACES_API_KEY`). OSM caveat: no ratings/price/photos, hours coverage partial — the UI renders unknowns gracefully.

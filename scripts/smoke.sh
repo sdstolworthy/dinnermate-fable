@@ -188,6 +188,29 @@ DETAIL_ID=$(json_get "$BODY" '.restaurant.id')
 [[ "$DETAIL_ID" == "$DECK0" ]] || fail
 echo "==> details OK ($DETAIL_ID)"
 
+STEP="room from list"
+request POST "$API/api/v1/lists/$LIST_CODE/items" "$USER_A" '{"name": "Freeform Spot"}'
+assert_status 201
+request POST "$API/api/v1/rooms/from-list" "$USER_A" "{\"list_code\": \"$LIST_CODE\"}"
+assert_status 201
+FL_CODE=$(json_get "$BODY" '.room.code')
+FL_SOURCE=$(json_get "$BODY" '.room.source_list_name')
+FL_DECK0=$(json_get "$BODY" '.deck[0].id')
+[[ "$FL_SOURCE" == "Date night" ]] || fail
+request POST "$API/api/v1/rooms/$FL_CODE/join" "$USER_A" '{"display_name": "Alice"}'
+assert_status 200
+request POST "$API/api/v1/rooms/$FL_CODE/swipes" "$USER_A" "{\"restaurant_id\": \"$FL_DECK0\", \"liked\": true}"
+assert_status 201
+request GET "$API/api/v1/rooms/$FL_CODE/matches" "$USER_A"
+assert_status 200
+echo "==> room-from-list OK (code=$FL_CODE, source=$FL_SOURCE)"
+
+STEP="pwa manifest"
+request GET "$WEB/manifest.json" "$USER_A"
+assert_status 200
+grep -q 'Dinnermate' <<<"$BODY" || fail
+echo "==> manifest OK"
+
 echo
 echo "SMOKE OK"
 echo "Stack left running:"
