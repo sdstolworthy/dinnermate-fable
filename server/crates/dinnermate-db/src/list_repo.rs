@@ -38,6 +38,13 @@ impl From<ListRow> for List {
 }
 
 #[derive(sqlx::FromRow)]
+struct MembershipRow {
+    #[sqlx(flatten)]
+    list: ListRow,
+    is_owner: bool,
+}
+
+#[derive(sqlx::FromRow)]
 struct ListItemRow {
     id: Uuid,
     list_id: Uuid,
@@ -73,6 +80,8 @@ impl From<ListItemRow> for ListItem {
 #[async_trait]
 impl ListRepo for PgListRepo {
     async fn create(&self, list: &List) -> Result<(), RepoError> {
+        let mut tx = self.pool.begin().await.map_err(into_repo_error)?;
+
         sqlx::query(
             "INSERT INTO lists (id, code, name, owner_user_id, created_at) \
              VALUES ($1, $2, $3, $4, $5)",
@@ -82,10 +91,23 @@ impl ListRepo for PgListRepo {
         .bind(&list.name)
         .bind(list.owner_user_id)
         .bind(list.created_at)
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(into_repo_error)?;
-        Ok(())
+
+        // Owner joins at creation time so lists_for_member ordering matches
+        // the migration 0002 backfill semantics (joined_at = created_at).
+        sqlx::query(
+            "INSERT INTO list_members (list_id, user_id, joined_at) VALUES ($1, $2, $3)",
+        )
+        .bind(list.id)
+        .bind(list.owner_user_id)
+        .bind(list.created_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(into_repo_error)?;
+
+        tx.commit().await.map_err(into_repo_error)
     }
 
     async fn find_by_code(&self, code: &str) -> Result<Option<(List, Vec<ListItem>)>, RepoError> {
@@ -130,30 +152,47 @@ impl ListRepo for PgListRepo {
         Ok(())
     }
 
-    // The three methods below are interim stubs: the list_members table only
-    // exists after migration 0002 (Task 3), which replaces them with real
-    // queries. They preserve v1 behavior (owner-only "mine", open add_item)
-    // so the API keeps working between tasks.
-
-    async fn join(&self, _list_id: Uuid, _user_id: Uuid) -> Result<(), RepoError> {
-        Err(RepoError::Database(
-            "list membership requires migration 0002 (Task 3)".to_string(),
-        ))
+    async fn join(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError> {
+        sqlx::query(
+            "INSERT INTO list_members (list_id, user_id) VALUES ($1, $2) \
+             ON CONFLICT DO NOTHING",
+        )
+        .bind(list_id)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(into_repo_error)?;
+        Ok(())
     }
 
-    async fn leave(&self, _list_id: Uuid, _user_id: Uuid) -> Result<(), RepoError> {
-        Err(RepoError::Database(
-            "list membership requires migration 0002 (Task 3)".to_string(),
-        ))
+    async fn leave(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError> {
+        sqlx::query("DELETE FROM list_members WHERE list_id = $1 AND user_id = $2")
+            .bind(list_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(into_repo_error)?;
+        Ok(())
     }
 
-    async fn is_member(&self, _list_id: Uuid, _user_id: Uuid) -> Result<bool, RepoError> {
-        Ok(true)
+    async fn is_member(&self, list_id: Uuid, user_id: Uuid) -> Result<bool, RepoError> {
+        sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM list_members WHERE list_id = $1 AND user_id = $2)",
+        )
+        .bind(list_id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(into_repo_error)
     }
 
     async fn lists_for_member(&self, user_id: Uuid) -> Result<Vec<ListMembership>, RepoError> {
-        let rows: Vec<ListRow> = sqlx::query_as(
-            "SELECT * FROM lists WHERE owner_user_id = $1 ORDER BY created_at DESC",
+        let rows: Vec<MembershipRow> = sqlx::query_as(
+            "SELECT l.*, (l.owner_user_id = lm.user_id) AS is_owner \
+             FROM lists l \
+             JOIN list_members lm ON lm.list_id = l.id \
+             WHERE lm.user_id = $1 \
+             ORDER BY lm.joined_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -161,7 +200,7 @@ impl ListRepo for PgListRepo {
         .map_err(into_repo_error)?;
         Ok(rows
             .into_iter()
-            .map(|row| ListMembership { list: row.into(), is_owner: true })
+            .map(|row| ListMembership { list: row.list.into(), is_owner: row.is_owner })
             .collect())
     }
 }

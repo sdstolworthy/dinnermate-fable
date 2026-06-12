@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use dinnermate_core::{
-    MatchEntry, Participant, RepoError, Restaurant, Room, RoomParams, RoomRepo,
+    HoursPeriod, MatchEntry, Participant, RepoError, Restaurant, Room, RoomParams, RoomRepo,
 };
+use sqlx::types::Json;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -69,6 +70,8 @@ struct RestaurantRow {
     photo_url: Option<String>,
     lat: f64,
     lng: f64,
+    hours: Option<Json<Vec<HoursPeriod>>>,
+    utc_offset_minutes: Option<i32>,
 }
 
 impl From<RestaurantRow> for Restaurant {
@@ -84,9 +87,8 @@ impl From<RestaurantRow> for Restaurant {
             photo_url: row.photo_url,
             lat: row.lat,
             lng: row.lng,
-            // Columns land in migration 0002; persisted in a later task.
-            hours: None,
-            utc_offset_minutes: None,
+            hours: row.hours.map(|json| json.0),
+            utc_offset_minutes: row.utc_offset_minutes,
         }
     }
 }
@@ -150,8 +152,9 @@ impl RoomRepo for PgRoomRepo {
         for (position, restaurant) in deck.iter().enumerate() {
             sqlx::query(
                 "INSERT INTO room_restaurants (room_id, restaurant_id, position, name, cuisine, \
-                 price_level, rating, rating_count, address, photo_url, lat, lng) \
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                 price_level, rating, rating_count, address, photo_url, lat, lng, hours, \
+                 utc_offset_minutes) \
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
             )
             .bind(room.id)
             .bind(&restaurant.id)
@@ -165,6 +168,8 @@ impl RoomRepo for PgRoomRepo {
             .bind(&restaurant.photo_url)
             .bind(restaurant.lat)
             .bind(restaurant.lng)
+            .bind(restaurant.hours.as_ref().map(Json))
+            .bind(restaurant.utc_offset_minutes)
             .execute(&mut *tx)
             .await
             .map_err(into_repo_error)?;

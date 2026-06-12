@@ -1,8 +1,9 @@
 use chrono::{DateTime, Duration, Utc};
 use dinnermate_core::{
-    List, ListItem, ListRepo, RepoError, Restaurant, Room, RoomParams, RoomRepo,
+    DetailsCacheRepo, HoursPeriod, List, ListItem, ListRepo, ProviderDetails, RepoError,
+    Restaurant, Review, Room, RoomParams, RoomRepo,
 };
-use dinnermate_db::{connect_and_migrate, PgListRepo, PgRoomRepo};
+use dinnermate_db::{connect_and_migrate, PgDetailsCacheRepo, PgListRepo, PgRoomRepo};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -241,8 +242,6 @@ async fn list_find_by_code_unknown_returns_none() {
     assert!(result.is_none());
 }
 
-// Task 3 extends this for joined (non-owned) memberships once migration 0002
-// and the real lists_for_member query land.
 #[tokio::test]
 async fn lists_for_member_returns_only_own_lists_ordered_desc() {
     let repo = PgListRepo::new(pool().await);
@@ -261,4 +260,179 @@ async fn lists_for_member_returns_only_own_lists_ordered_desc() {
     let lists: Vec<_> = memberships.iter().map(|m| m.list.clone()).collect();
     assert_eq!(lists, vec![newer, older]);
     assert!(memberships.iter().all(|m| m.is_owner));
+}
+
+#[tokio::test]
+async fn list_create_makes_owner_a_member_immediately() {
+    let repo = PgListRepo::new(pool().await);
+    let owner = Uuid::new_v4();
+    let list = list(&unique_code(), owner, now_micros());
+    repo.create(&list).await.expect("create list");
+
+    assert!(repo.is_member(list.id, owner).await.expect("is_member"));
+    let memberships = repo.lists_for_member(owner).await.expect("lists_for_member");
+    assert_eq!(memberships.len(), 1);
+    assert_eq!(memberships[0].list, list);
+    assert!(memberships[0].is_owner);
+}
+
+#[tokio::test]
+async fn list_join_is_idempotent_and_grants_non_owner_membership() {
+    let repo = PgListRepo::new(pool().await);
+    let list = list(&unique_code(), Uuid::new_v4(), now_micros());
+    repo.create(&list).await.expect("create list");
+    let joiner = Uuid::new_v4();
+
+    repo.join(list.id, joiner).await.expect("first join");
+    repo.join(list.id, joiner).await.expect("second join is a no-op");
+
+    assert!(repo.is_member(list.id, joiner).await.expect("is_member"));
+    let memberships = repo.lists_for_member(joiner).await.expect("lists_for_member");
+    assert_eq!(memberships.len(), 1);
+    assert_eq!(memberships[0].list, list);
+    assert!(!memberships[0].is_owner);
+}
+
+#[tokio::test]
+async fn list_leave_removes_membership() {
+    let repo = PgListRepo::new(pool().await);
+    let list = list(&unique_code(), Uuid::new_v4(), now_micros());
+    repo.create(&list).await.expect("create list");
+    let joiner = Uuid::new_v4();
+
+    repo.join(list.id, joiner).await.expect("join");
+    repo.leave(list.id, joiner).await.expect("leave");
+
+    assert!(!repo.is_member(list.id, joiner).await.expect("is_member"));
+    assert!(repo
+        .lists_for_member(joiner)
+        .await
+        .expect("lists_for_member")
+        .is_empty());
+}
+
+#[tokio::test]
+async fn lists_for_member_orders_by_joined_at_desc_with_ownership_flags() {
+    let repo = PgListRepo::new(pool().await);
+    let user = Uuid::new_v4();
+
+    // Own list created (and thus joined) in the past; foreign list joined now,
+    // so the foreign membership is the most recent.
+    let own = list(&unique_code(), user, now_micros() - Duration::seconds(10));
+    let foreign = list(&unique_code(), Uuid::new_v4(), now_micros());
+    repo.create(&own).await.expect("create own");
+    repo.create(&foreign).await.expect("create foreign");
+    repo.join(foreign.id, user).await.expect("join foreign");
+
+    let memberships = repo.lists_for_member(user).await.expect("lists_for_member");
+    let summary: Vec<(Uuid, bool)> = memberships.iter().map(|m| (m.list.id, m.is_owner)).collect();
+    assert_eq!(summary, vec![(foreign.id, false), (own.id, true)]);
+}
+
+fn hours() -> Vec<HoursPeriod> {
+    vec![
+        HoursPeriod { day: 1, open: "11:00".into(), close: "14:00".into() },
+        HoursPeriod { day: 5, open: "17:00".into(), close: "01:00".into() },
+    ]
+}
+
+#[tokio::test]
+async fn room_deck_roundtrips_hours_and_utc_offset_through_find_by_code() {
+    let repo = PgRoomRepo::new(pool().await);
+    let room = room(&unique_code());
+    let with_hours = Restaurant {
+        hours: Some(hours()),
+        utc_offset_minutes: Some(-360),
+        ..restaurant("r-hours", "Hourly House")
+    };
+    let without_hours = restaurant("r-nohours", "Mystery Meals");
+    let deck = vec![with_hours, without_hours];
+
+    repo.create(&room, &deck).await.expect("create room");
+    let (_, found_deck) = repo
+        .find_by_code(&room.code)
+        .await
+        .expect("find_by_code")
+        .expect("room should exist");
+
+    assert_eq!(found_deck, deck);
+}
+
+#[tokio::test]
+async fn matches_carry_hours_and_utc_offset() {
+    let repo = PgRoomRepo::new(pool().await);
+    let room = room(&unique_code());
+    let liked = Restaurant {
+        hours: Some(hours()),
+        utc_offset_minutes: Some(120),
+        ..restaurant("r-liked", "Liked Lounge")
+    };
+    repo.create(&room, std::slice::from_ref(&liked))
+        .await
+        .expect("create room");
+    let participant = repo
+        .join(room.id, Uuid::new_v4(), "Dana")
+        .await
+        .expect("join");
+    repo.record_swipe(room.id, participant.id, "r-liked", true)
+        .await
+        .expect("swipe");
+
+    let matches = repo.matches(room.id).await.expect("matches");
+    assert_eq!(matches.len(), 1);
+    assert_eq!(matches[0].restaurant, liked);
+}
+
+fn provider_details(website: &str) -> ProviderDetails {
+    ProviderDetails {
+        website: Some(website.into()),
+        phone: Some("+1 801-555-0123".into()),
+        maps_url: Some("https://maps.example.com/p".into()),
+        reviews: vec![Review {
+            author: "Ada".into(),
+            rating: 5,
+            text: "Great noodles".into(),
+            relative_time: Some("2 weeks ago".into()),
+        }],
+    }
+}
+
+#[tokio::test]
+async fn details_cache_get_miss_returns_none() {
+    let repo = PgDetailsCacheRepo::new(pool().await);
+    let hit = repo.get("seed-never-cached").await.expect("get");
+    assert!(hit.is_none());
+}
+
+#[tokio::test]
+async fn details_cache_put_then_get_roundtrips_with_recent_fetched_at() {
+    let repo = PgDetailsCacheRepo::new(pool().await);
+    let id = format!("seed-{}", unique_code());
+    let details = provider_details("https://noodles.example.com");
+
+    let before = Utc::now() - Duration::seconds(30);
+    repo.put(&id, &details).await.expect("put");
+    let after = Utc::now() + Duration::seconds(30);
+
+    let (cached, fetched_at) = repo.get(&id).await.expect("get").expect("cache hit");
+    assert_eq!(cached, details);
+    assert!(
+        fetched_at > before && fetched_at < after,
+        "fetched_at {fetched_at} not within sane bounds"
+    );
+}
+
+#[tokio::test]
+async fn details_cache_put_twice_updates_payload() {
+    let repo = PgDetailsCacheRepo::new(pool().await);
+    let id = format!("seed-{}", unique_code());
+
+    repo.put(&id, &provider_details("https://old.example.com"))
+        .await
+        .expect("first put");
+    let updated = provider_details("https://new.example.com");
+    repo.put(&id, &updated).await.expect("second put");
+
+    let (cached, _) = repo.get(&id).await.expect("get").expect("cache hit");
+    assert_eq!(cached, updated);
 }
