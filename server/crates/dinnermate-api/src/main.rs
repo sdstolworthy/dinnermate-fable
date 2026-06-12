@@ -2,6 +2,7 @@ use std::error::Error;
 use std::sync::Arc;
 
 use dinnermate_api::config::{Config, RestaurantProviderKind};
+use dinnermate_api::google::{GooglePlacesProvider, GOOGLE_PLACES_BASE_URL};
 use dinnermate_api::server::{build_router, cors_layer, AppState};
 use dinnermate_core::{ListService, RestaurantProvider, RoomService, SeedProvider};
 use dinnermate_db::{connect_and_migrate, PgListRepo, PgRoomRepo};
@@ -16,9 +17,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let provider: Arc<dyn RestaurantProvider> = match config.provider {
         RestaurantProviderKind::Seed => Arc::new(SeedProvider::new()),
         RestaurantProviderKind::Google => {
-            // Task 7 replaces this arm with GooglePlacesProvider, built from
-            // config.google_places_api_key (validated present by Config).
-            return Err("google provider not wired yet (Task 7)".into());
+            // NOT verified against the live Google Places API (no key was
+            // available at build time); covered by stub-server tests only.
+            let api_key = config
+                .google_places_api_key
+                .clone()
+                .expect("Config guarantees a key when provider=google");
+            Arc::new(GooglePlacesProvider::new(
+                reqwest::Client::new(),
+                api_key,
+                GOOGLE_PLACES_BASE_URL.to_string(),
+            ))
         }
     };
 

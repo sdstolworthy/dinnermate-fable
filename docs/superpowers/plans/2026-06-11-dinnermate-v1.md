@@ -281,8 +281,8 @@ Dataset: 60 restaurants, ids `seed-001..seed-060`, ≥8 cuisines (mexican, thai,
 
 POST `https://places.googleapis.com/v1/places:searchNearby` with field mask `places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.location,places.primaryType,places.photos`; map `priceLevel` enum (`PRICE_LEVEL_INEXPENSIVE`=1 … `PRICE_LEVEL_VERY_EXPENSIVE`=4, missing→2), `includedTypes:["restaurant"]`, radius+center from params; photo url via `https://places.googleapis.com/v1/{photo.name}/media?maxWidthPx=800&key=...`. Cuisine from `primaryType` (strip `_restaurant` suffix). Base URL injectable for tests.
 
-- [ ] Tests: stub HTTP server (use `axum` itself as stub on ephemeral port) returning canned JSON → mapping correct incl. missing rating/priceLevel defaults; 403 from API → `ProviderError::Unavailable`
-- [ ] `cargo test -p dinnermate-api` → PASS; commit `feat(api): google places provider (unverified against live API)`
+- [x] Tests: stub HTTP server (use `axum` itself as stub on ephemeral port) returning canned JSON → mapping correct incl. missing rating/priceLevel defaults; 403 from API → `ProviderError::Unavailable`
+- [x] `cargo test -p dinnermate-api` → PASS; commit `feat(api): google places provider (unverified against live API)`
 
 ## Task 8: Flutter scaffold + API client + models
 
