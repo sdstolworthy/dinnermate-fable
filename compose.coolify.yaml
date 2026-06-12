@@ -1,0 +1,32 @@
+# Coolify deployment compose (no postgres — point DATABASE_URL at a managed
+# or separately-provisioned database via Coolify's Environment Variables tab).
+#
+# Setup in the Coolify UI: New Application -> this repo, branch main,
+# Docker Compose build using this file. Two routing options:
+#
+#   1. Single FQDN (recommended): set the FQDN on the `web` service only.
+#      web's nginx proxies /api/ -> http://api:8080/api/, so the API is
+#      reachable same-origin at https://<fqdn>/api/... and `api` needs no
+#      public route at all.
+#   2. Two FQDNs: set one FQDN on `web` and another on `api` (port 8080)
+#      if the API must be reachable directly (e.g. for non-browser clients).
+#
+# Healthchecks are inherited from the images (api: curl /healthz,
+# web: nginx). Secrets only via Coolify env vars — never in this file.
+
+services:
+  api:
+    build: server
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RESTAURANT_PROVIDER: ${RESTAURANT_PROVIDER:-seed}
+      GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+
+  web:
+    build:
+      context: client
+      args:
+        # Same-origin API path; nginx inside the image proxies it to `api`.
+        API_BASE_URL: /api
+    depends_on:
+      - api

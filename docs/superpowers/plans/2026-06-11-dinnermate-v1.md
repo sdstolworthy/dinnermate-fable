@@ -217,9 +217,9 @@ DTOs serialize snake_case; `RoomDto` flattens params (same field names as reques
 
 **Files:** Create `server/Cargo.toml` (workspace), `server/rust-toolchain.toml`, `server/crates/{dinnermate-core,dinnermate-db,dinnermate-api}/Cargo.toml` + `src/lib.rs` stubs (api gets `src/main.rs`), `.gitignore` (target/, build/, .dart_tool/, pubspec.lock, web/), `README.md` (one-paragraph stub), `docker-compose.yml` (postgres 17-alpine on 55432 + api + web), `server/AGENTS.md` (copy the openapi-sync convention from fulfilled, adapted).
 
-- [ ] Workspace builds: `cd server && cargo build` → success
-- [ ] `docker compose up -d postgres` → healthy; `docker compose exec postgres pg_isready` → accepting
-- [ ] Commit: `chore: scaffold workspace and dev compose`
+- [x] Workspace builds: `cd server && cargo build` → success
+- [x] `docker compose up -d postgres` → healthy; `docker compose exec postgres pg_isready` → accepting
+- [x] Commit: `chore: scaffold workspace and dev compose`
 
 Workspace deps (pin in `[workspace.dependencies]`): axum 0.8 (macros), tokio 1 (full), sqlx 0.8 (runtime-tokio-rustls, postgres, uuid, chrono, migrate), serde 1 (derive), serde_json 1, uuid 1 (v4, serde), chrono 0.4 (serde, clock), thiserror 2, async-trait 0.1, rand 0.9, tracing + tracing-subscriber, tower-http 0.6 (cors, trace), reqwest 0.12 (json, rustls-tls, no default features).
 
@@ -293,8 +293,8 @@ POST `https://places.googleapis.com/v1/places:searchNearby` with field mask `pla
 All Flutter commands run in Docker:
 `docker run --rm -v /workplace/dinnermate-fable/client:/work -w /work ghcr.io/cirruslabs/flutter:stable sh -c "flutter create . --platforms=web && flutter pub get && flutter analyze && flutter test"`
 
-- [ ] Tests: models JSON roundtrip (table-driven per DTO); ApiClient happy/error paths with a fake `http.Client`; Identity persists UUID across instances via in-memory store
-- [ ] `flutter analyze` clean, `flutter test` PASS (in Docker); commit `feat(client): scaffold, api client, identity, theme`
+- [x] Tests: models JSON roundtrip (table-driven per DTO); ApiClient happy/error paths with a fake `http.Client`; Identity persists UUID across instances via in-memory store
+- [x] `flutter analyze` clean, `flutter test` PASS (in Docker); commit `feat(client): scaffold, api client, identity, theme`
 
 ## Task 9: Flutter screens
 
@@ -308,8 +308,8 @@ Behavior requirements (see spec §Flutter client + §vibe):
 - Lists: my lists grid + join-by-code; detail shows items, FAB add free-form item, share code chip.
 - RestaurantCard with photo if photo_url else cuisine-keyed soft gradient + emoji (🌮🍜🍕🍣🍛🍔🥡🥙🥘🍲 map).
 
-- [ ] Widget tests: swipe deck advances + fires callback on drag past threshold and on button tap; join flow validates empty name; match tile renders count. Fake ApiClient injected via provider.
-- [ ] `flutter analyze` clean, `flutter test` PASS (Docker); commit `feat(client): all v1 screens`
+- [x] Widget tests: swipe deck advances + fires callback on drag past threshold and on button tap; join flow validates empty name; match tile renders count. Fake ApiClient injected via provider.
+- [x] `flutter analyze` clean, `flutter test` PASS (Docker); commit `feat(client): all v1 screens`
 
 ## Task 10: Client Dockerfile + nginx
 
@@ -322,8 +322,8 @@ Behavior requirements (see spec §Flutter client + §vibe):
 
 **Files:** Create `server/Dockerfile` (multi-stage rust:1.95-slim → debian:bookworm-slim, EXPOSE 8080, `HEALTHCHECK CMD curl -f http://localhost:8080/healthz`), finalize `docker-compose.yml` (postgres + api(seed provider) + web on :8888), `compose.coolify.yaml` (api + web, external DB env), `scripts/smoke.sh`: curl create room → join two users → swipe both → assert matches JSON has expected like_count=2 first entry, assert web `/health.txt` 200, assert deep-link `/#/r/CODE` serves index.html.
 
-- [ ] `docker compose up -d --build` → all healthy; `./scripts/smoke.sh` → "SMOKE OK"
-- [ ] Commit `build: compose for dev and coolify, e2e smoke script`
+- [x] `docker compose up -d --build` → all healthy; `./scripts/smoke.sh` → "SMOKE OK"
+- [x] Commit `build: compose for dev and coolify, e2e smoke script`
 
 ## Task 12: Overnight report + final review
 
