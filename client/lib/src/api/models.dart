@@ -3,6 +3,27 @@ library;
 
 double _asDouble(Object? value) => (value as num).toDouble();
 
+/// One opening span; day 0=Sun..6=Sat, times "HH:MM" restaurant-local.
+class HoursPeriod {
+  const HoursPeriod({
+    required this.day,
+    required this.open,
+    required this.close,
+  });
+
+  final int day;
+  final String open;
+  final String close;
+
+  factory HoursPeriod.fromJson(Map<String, dynamic> json) => HoursPeriod(
+        day: json['day'] as int,
+        open: json['open'] as String,
+        close: json['close'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {'day': day, 'open': open, 'close': close};
+}
+
 class Restaurant {
   const Restaurant({
     required this.id,
@@ -15,6 +36,8 @@ class Restaurant {
     this.photoUrl,
     required this.lat,
     required this.lng,
+    this.hours,
+    this.utcOffsetMinutes,
   });
 
   final String id;
@@ -28,6 +51,10 @@ class Restaurant {
   final double lat;
   final double lng;
 
+  /// Null = unknown (also when a v1 server omits the key entirely).
+  final List<HoursPeriod>? hours;
+  final int? utcOffsetMinutes;
+
   factory Restaurant.fromJson(Map<String, dynamic> json) => Restaurant(
         id: json['id'] as String,
         name: json['name'] as String,
@@ -39,6 +66,10 @@ class Restaurant {
         photoUrl: json['photo_url'] as String?,
         lat: _asDouble(json['lat']),
         lng: _asDouble(json['lng']),
+        hours: (json['hours'] as List?)
+            ?.map((e) => HoursPeriod.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        utcOffsetMinutes: json['utc_offset_minutes'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -52,6 +83,73 @@ class Restaurant {
         'photo_url': photoUrl,
         'lat': lat,
         'lng': lng,
+        'hours': hours?.map((p) => p.toJson()).toList(),
+        'utc_offset_minutes': utcOffsetMinutes,
+      };
+}
+
+class Review {
+  const Review({
+    required this.author,
+    required this.rating,
+    required this.text,
+    this.relativeTime,
+  });
+
+  final String author;
+  final int rating;
+  final String text;
+  final String? relativeTime;
+
+  factory Review.fromJson(Map<String, dynamic> json) => Review(
+        author: json['author'] as String,
+        rating: json['rating'] as int,
+        text: json['text'] as String,
+        relativeTime: json['relative_time'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'author': author,
+        'rating': rating,
+        'text': text,
+        'relative_time': relativeTime,
+      };
+}
+
+/// Response body of `GET /rooms/{code}/restaurants/{id}/details`.
+class RestaurantDetails {
+  const RestaurantDetails({
+    required this.restaurant,
+    this.website,
+    this.phone,
+    this.mapsUrl,
+    required this.reviews,
+  });
+
+  final Restaurant restaurant;
+  final String? website;
+  final String? phone;
+  final String? mapsUrl;
+  final List<Review> reviews;
+
+  factory RestaurantDetails.fromJson(Map<String, dynamic> json) =>
+      RestaurantDetails(
+        restaurant:
+            Restaurant.fromJson(json['restaurant'] as Map<String, dynamic>),
+        website: json['website'] as String?,
+        phone: json['phone'] as String?,
+        mapsUrl: json['maps_url'] as String?,
+        reviews: (json['reviews'] as List)
+            .map((e) => Review.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'restaurant': restaurant.toJson(),
+        'website': website,
+        'phone': phone,
+        'maps_url': mapsUrl,
+        'reviews': reviews.map((r) => r.toJson()).toList(),
       };
 }
 
@@ -195,6 +293,24 @@ class DinnerList {
         'code': code,
         'name': name,
         'owner_user_id': ownerUserId,
+      };
+}
+
+/// One entry of `GET /lists`: the list's own fields flattened, plus is_owner.
+class MyList {
+  const MyList({required this.list, required this.isOwner});
+
+  final DinnerList list;
+  final bool isOwner;
+
+  factory MyList.fromJson(Map<String, dynamic> json) => MyList(
+        list: DinnerList.fromJson(json),
+        isOwner: json['is_owner'] as bool,
+      );
+
+  Map<String, dynamic> toJson() => {
+        ...list.toJson(),
+        'is_owner': isOwner,
       };
 }
 

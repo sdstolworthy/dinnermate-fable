@@ -80,21 +80,43 @@ class ApiClient {
     return DinnerList.fromJson(json['list'] as Map<String, dynamic>);
   }
 
-  Future<List<DinnerList>> getMyLists() async {
+  Future<List<MyList>> getMyLists() async {
     final json = await _send('GET', '/lists');
     return (json['lists'] as List)
-        .map((e) => DinnerList.fromJson(e as Map<String, dynamic>))
+        .map((e) => MyList.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  Future<(DinnerList, List<ListItem>)> getList(String code) async {
+  Future<(DinnerList, List<ListItem>, {bool isMember, bool isOwner})> getList(
+      String code) async {
     final json = await _send('GET', '/lists/$code');
     return (
       DinnerList.fromJson(json['list'] as Map<String, dynamic>),
       (json['items'] as List)
           .map((e) => ListItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      isMember: json['is_member'] as bool,
+      isOwner: json['is_owner'] as bool,
     );
+  }
+
+  Future<(DinnerList, bool isOwner)> joinList(String code) async {
+    final json = await _send('POST', '/lists/$code/join');
+    return (
+      DinnerList.fromJson(json['list'] as Map<String, dynamic>),
+      json['is_owner'] as bool,
+    );
+  }
+
+  Future<void> leaveList(String code) async {
+    await _send('DELETE', '/lists/$code/members/me');
+  }
+
+  Future<RestaurantDetails> getRestaurantDetails(
+      String roomCode, String restaurantId) async {
+    final json =
+        await _send('GET', '/rooms/$roomCode/restaurants/$restaurantId/details');
+    return RestaurantDetails.fromJson(json);
   }
 
   Future<ListItem> addListItem(String code, NewListItem item) async {

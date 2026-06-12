@@ -18,6 +18,18 @@ const _restaurantJson = <String, dynamic>{
   'photo_url': 'https://example.com/p.jpg',
   'lat': 40.76,
   'lng': -111.89,
+  'hours': [
+    {'day': 5, 'open': '11:00', 'close': '22:00'},
+    {'day': 6, 'open': '17:00', 'close': '01:00'},
+  ],
+  'utc_offset_minutes': -360,
+};
+
+const _reviewJson = <String, dynamic>{
+  'author': 'Dana',
+  'rating': 5,
+  'text': 'Great tacos.',
+  'relative_time': '2 months ago',
 };
 
 void main() {
@@ -31,6 +43,59 @@ void main() {
       name: 'Restaurant with null photo_url',
       json: {..._restaurantJson, 'photo_url': null},
       roundTrip: (j) => Restaurant.fromJson(j).toJson(),
+    ),
+    (
+      name: 'Restaurant with null hours and utc_offset_minutes',
+      json: {..._restaurantJson, 'hours': null, 'utc_offset_minutes': null},
+      roundTrip: (j) => Restaurant.fromJson(j).toJson(),
+    ),
+    (
+      name: 'HoursPeriod',
+      json: {'day': 0, 'open': '09:00', 'close': '14:30'},
+      roundTrip: (j) => HoursPeriod.fromJson(j).toJson(),
+    ),
+    (
+      name: 'Review',
+      json: _reviewJson,
+      roundTrip: (j) => Review.fromJson(j).toJson(),
+    ),
+    (
+      name: 'Review with null relative_time',
+      json: {..._reviewJson, 'relative_time': null},
+      roundTrip: (j) => Review.fromJson(j).toJson(),
+    ),
+    (
+      name: 'RestaurantDetails',
+      json: {
+        'restaurant': _restaurantJson,
+        'website': 'https://tacocielo.example',
+        'phone': '+1 801 555 0100',
+        'maps_url': 'https://maps.google.com/?q=Taco+Cielo',
+        'reviews': [_reviewJson],
+      },
+      roundTrip: (j) => RestaurantDetails.fromJson(j).toJson(),
+    ),
+    (
+      name: 'RestaurantDetails with nulls and empty reviews',
+      json: {
+        'restaurant': _restaurantJson,
+        'website': null,
+        'phone': null,
+        'maps_url': null,
+        'reviews': <Map<String, dynamic>>[],
+      },
+      roundTrip: (j) => RestaurantDetails.fromJson(j).toJson(),
+    ),
+    (
+      name: 'MyList (flattened list fields plus is_owner)',
+      json: {
+        'id': '6f1f7a3e-0000-4000-8000-000000000004',
+        'code': 'XYZ789',
+        'name': 'Date nights',
+        'owner_user_id': '6f1f7a3e-0000-4000-8000-000000000003',
+        'is_owner': false,
+      },
+      roundTrip: (j) => MyList.fromJson(j).toJson(),
     ),
     (
       name: 'Room',
@@ -135,6 +200,19 @@ void main() {
     for (final c in cases) {
       test(c.name, () => expect(c.roundTrip(c.json), equals(c.json)));
     }
+  });
+
+  group('v1 back-compat', () {
+    test('Restaurant tolerates absent hours and utc_offset_minutes keys', () {
+      final v1Json = {..._restaurantJson}
+        ..remove('hours')
+        ..remove('utc_offset_minutes');
+
+      final restaurant = Restaurant.fromJson(v1Json);
+
+      expect(restaurant.hours, isNull);
+      expect(restaurant.utcOffsetMinutes, isNull);
+    });
   });
 
   group('Request serialization', () {
