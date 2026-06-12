@@ -241,8 +241,10 @@ async fn list_find_by_code_unknown_returns_none() {
     assert!(result.is_none());
 }
 
+// Task 3 extends this for joined (non-owned) memberships once migration 0002
+// and the real lists_for_member query land.
 #[tokio::test]
-async fn lists_for_owner_returns_only_owned_ordered_desc() {
+async fn lists_for_member_returns_only_own_lists_ordered_desc() {
     let repo = PgListRepo::new(pool().await);
     let owner = Uuid::new_v4();
     let other_owner = Uuid::new_v4();
@@ -255,6 +257,8 @@ async fn lists_for_owner_returns_only_owned_ordered_desc() {
     repo.create(&newer).await.expect("create newer");
     repo.create(&foreign).await.expect("create foreign");
 
-    let lists = repo.lists_for_owner(owner).await.expect("lists_for_owner");
+    let memberships = repo.lists_for_member(owner).await.expect("lists_for_member");
+    let lists: Vec<_> = memberships.iter().map(|m| m.list.clone()).collect();
     assert_eq!(lists, vec![newer, older]);
+    assert!(memberships.iter().all(|m| m.is_owner));
 }

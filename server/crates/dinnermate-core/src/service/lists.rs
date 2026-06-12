@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::code::generate_code;
 use crate::error::{CoreError, RepoError};
-use crate::model::{List, ListItem};
+use crate::model::{List, ListItem, ListMembership};
 use crate::repo::ListRepo;
 use crate::service::MAX_CODE_ATTEMPTS;
 
@@ -65,6 +65,9 @@ impl ListService {
             return Err(CoreError::InvalidParams("item name must not be empty".to_string()));
         }
         let (list, _) = self.find_list(code).await?;
+        if !self.repo.is_member(list.id, user_id).await? {
+            return Err(CoreError::NotListMember);
+        }
         let item = ListItem {
             id: Uuid::new_v4(),
             list_id: list.id,
@@ -82,8 +85,23 @@ impl ListService {
         Ok(item)
     }
 
-    pub async fn mine(&self, owner: Uuid) -> Result<Vec<List>, CoreError> {
-        Ok(self.repo.lists_for_owner(owner).await?)
+    pub async fn join(&self, code: &str, user_id: Uuid) -> Result<ListMembership, CoreError> {
+        let (list, _) = self.find_list(code).await?;
+        self.repo.join(list.id, user_id).await?;
+        let is_owner = list.owner_user_id == user_id;
+        Ok(ListMembership { list, is_owner })
+    }
+
+    pub async fn leave(&self, code: &str, user_id: Uuid) -> Result<(), CoreError> {
+        let (list, _) = self.find_list(code).await?;
+        if list.owner_user_id == user_id {
+            return Err(CoreError::OwnerCannotLeave);
+        }
+        Ok(self.repo.leave(list.id, user_id).await?)
+    }
+
+    pub async fn mine(&self, user_id: Uuid) -> Result<Vec<ListMembership>, CoreError> {
+        Ok(self.repo.lists_for_member(user_id).await?)
     }
 
     async fn find_list(&self, code: &str) -> Result<(List, Vec<ListItem>), CoreError> {
@@ -136,14 +154,84 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn add_item_by_non_owner_succeeds() {
+    async fn add_item_by_owner_succeeds() {
         let service = service();
-        let list = service.create(Uuid::new_v4(), "Shared picks").await.unwrap();
-        let other_user = Uuid::new_v4();
-        let item = service.add_item(&list.code, other_user, new_item("Thai Garden")).await.unwrap();
-        assert_eq!(item.added_by_user_id, other_user);
+        let owner = Uuid::new_v4();
+        let list = service.create(owner, "Shared picks").await.unwrap();
+        let item = service.add_item(&list.code, owner, new_item("Thai Garden")).await.unwrap();
         let (_, items) = service.get(&list.code).await.unwrap();
         assert_eq!(items, vec![item]);
+    }
+
+    #[tokio::test]
+    async fn add_item_by_joined_member_succeeds() {
+        let service = service();
+        let list = service.create(Uuid::new_v4(), "Shared picks").await.unwrap();
+        let member = Uuid::new_v4();
+        service.join(&list.code, member).await.unwrap();
+        let item = service.add_item(&list.code, member, new_item("Thai Garden")).await.unwrap();
+        assert_eq!(item.added_by_user_id, member);
+    }
+
+    #[tokio::test]
+    async fn add_item_by_non_member_is_not_list_member() {
+        let service = service();
+        let list = service.create(Uuid::new_v4(), "Shared picks").await.unwrap();
+        let err =
+            service.add_item(&list.code, Uuid::new_v4(), new_item("Thai Garden")).await.unwrap_err();
+        assert!(matches!(err, CoreError::NotListMember), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn join_is_idempotent_and_reports_ownership() {
+        let service = service();
+        let owner = Uuid::new_v4();
+        let list = service.create(owner, "Shared picks").await.unwrap();
+        let member = Uuid::new_v4();
+        let first = service.join(&list.code, member).await.unwrap();
+        let second = service.join(&list.code, member).await.unwrap();
+        assert_eq!(first, ListMembership { list: list.clone(), is_owner: false });
+        assert_eq!(second, first, "second join must be a no-op");
+        let mine = service.mine(member).await.unwrap();
+        assert_eq!(mine, vec![first], "duplicate join must not duplicate membership");
+        let as_owner = service.join(&list.code, owner).await.unwrap();
+        assert!(as_owner.is_owner);
+    }
+
+    #[tokio::test]
+    async fn join_unknown_list_is_list_not_found() {
+        let service = service();
+        let err = service.join("NOSUCH", Uuid::new_v4()).await.unwrap_err();
+        assert!(matches!(err, CoreError::ListNotFound), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn leave_removes_membership() {
+        let service = service();
+        let list = service.create(Uuid::new_v4(), "Shared picks").await.unwrap();
+        let member = Uuid::new_v4();
+        service.join(&list.code, member).await.unwrap();
+        service.leave(&list.code, member).await.unwrap();
+        assert!(service.mine(member).await.unwrap().is_empty());
+        let err = service.add_item(&list.code, member, new_item("Thai Garden")).await.unwrap_err();
+        assert!(matches!(err, CoreError::NotListMember), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn leave_by_owner_is_owner_cannot_leave() {
+        let service = service();
+        let owner = Uuid::new_v4();
+        let list = service.create(owner, "Shared picks").await.unwrap();
+        let err = service.leave(&list.code, owner).await.unwrap_err();
+        assert!(matches!(err, CoreError::OwnerCannotLeave), "got {err:?}");
+        assert_eq!(service.mine(owner).await.unwrap().len(), 1, "owner must still be a member");
+    }
+
+    #[tokio::test]
+    async fn leave_unknown_list_is_list_not_found() {
+        let service = service();
+        let err = service.leave("NOSUCH", Uuid::new_v4()).await.unwrap_err();
+        assert!(matches!(err, CoreError::ListNotFound), "got {err:?}");
     }
 
     #[tokio::test]
@@ -169,12 +257,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn mine_returns_only_owners_lists() {
+    async fn mine_returns_owned_and_joined_with_flags_most_recent_first() {
         let service = service();
         let (alice, bob) = (Uuid::new_v4(), Uuid::new_v4());
         let alices = service.create(alice, "Alice's spots").await.unwrap();
-        service.create(bob, "Bob's spots").await.unwrap();
-        let mine = service.mine(alice).await.unwrap();
-        assert_eq!(mine, vec![alices]);
+        let bobs = service.create(bob, "Bob's spots").await.unwrap();
+        service.join(&alices.code, bob).await.unwrap();
+
+        let mine = service.mine(bob).await.unwrap();
+        assert_eq!(
+            mine,
+            vec![
+                ListMembership { list: alices, is_owner: false },
+                ListMembership { list: bobs, is_owner: true },
+            ],
+            "joined most recently must come first"
+        );
+
+        let alices_view = service.mine(alice).await.unwrap();
+        assert_eq!(alices_view.len(), 1);
+        assert!(alices_view[0].is_owner);
     }
 }

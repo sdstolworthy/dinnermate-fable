@@ -6,9 +6,9 @@ use uuid::Uuid;
 use crate::code::generate_code;
 use crate::error::{CoreError, RepoError};
 use crate::filter;
-use crate::model::{MatchEntry, Participant, Restaurant, Room, RoomParams};
+use crate::model::{MatchEntry, Participant, ProviderDetails, Restaurant, Room, RoomParams};
 use crate::provider::RestaurantProvider;
-use crate::repo::RoomRepo;
+use crate::repo::{DetailsCacheRepo, RoomRepo};
 use crate::service::MAX_CODE_ATTEMPTS;
 
 pub struct CreateRoom {
@@ -19,11 +19,16 @@ pub struct CreateRoom {
 pub struct RoomService {
     repo: Arc<dyn RoomRepo>,
     provider: Arc<dyn RestaurantProvider>,
+    cache: Arc<dyn DetailsCacheRepo>,
 }
 
 impl RoomService {
-    pub fn new(repo: Arc<dyn RoomRepo>, provider: Arc<dyn RestaurantProvider>) -> Self {
-        Self { repo, provider }
+    pub fn new(
+        repo: Arc<dyn RoomRepo>,
+        provider: Arc<dyn RestaurantProvider>,
+        cache: Arc<dyn DetailsCacheRepo>,
+    ) -> Self {
+        Self { repo, provider, cache }
     }
 
     pub async fn create_room(
@@ -116,6 +121,40 @@ impl RoomService {
         Ok((entries, participant_count))
     }
 
+    /// Details for a restaurant in the room's deck, with a 24h server cache.
+    /// Any authenticated user with the room code may look up details — joining
+    /// the room is not required. On provider failure a stale cache entry is
+    /// served rather than erroring.
+    pub async fn restaurant_details(
+        &self,
+        code: &str,
+        _user_id: Uuid,
+        restaurant_id: &str,
+    ) -> Result<(Restaurant, ProviderDetails), CoreError> {
+        let (_, deck) = self.find_room(code).await?;
+        let restaurant = deck
+            .into_iter()
+            .find(|r| r.id == restaurant_id)
+            .ok_or(CoreError::UnknownRestaurant)?;
+
+        let cached = self.cache.get(restaurant_id).await?;
+        if let Some((details, fetched_at)) = &cached {
+            if Utc::now() - *fetched_at < chrono::Duration::hours(24) {
+                return Ok((restaurant, details.clone()));
+            }
+        }
+        match self.provider.details(restaurant_id).await {
+            Ok(details) => {
+                self.cache.put(restaurant_id, &details).await?;
+                Ok((restaurant, details))
+            }
+            Err(err) => match cached {
+                Some((stale, _)) => Ok((restaurant, stale)),
+                None => Err(err.into()),
+            },
+        }
+    }
+
     async fn find_room(&self, code: &str) -> Result<(Room, Vec<Restaurant>), CoreError> {
         self.repo
             .find_by_code(code)
@@ -128,12 +167,28 @@ impl RoomService {
 mod tests {
     use super::*;
     use crate::error::RepoError;
-    use crate::testing::{restaurant, valid_params, FakeProvider, FakeRoomRepo};
+    use crate::testing::{restaurant, valid_params, FakeDetailsCache, FakeProvider, FakeRoomRepo};
 
     fn service_with(restaurants: Vec<Restaurant>) -> (Arc<FakeRoomRepo>, RoomService) {
         let repo = Arc::new(FakeRoomRepo::new());
-        let service = RoomService::new(repo.clone(), Arc::new(FakeProvider(restaurants)));
+        let service = RoomService::new(
+            repo.clone(),
+            Arc::new(FakeProvider::new(restaurants)),
+            Arc::new(FakeDetailsCache::new()),
+        );
         (repo, service)
+    }
+
+    /// Like `service_with`, but exposes the provider and cache for the
+    /// details-caching tests.
+    fn details_service(
+        restaurants: Vec<Restaurant>,
+    ) -> (Arc<FakeProvider>, Arc<FakeDetailsCache>, RoomService) {
+        let provider = Arc::new(FakeProvider::new(restaurants));
+        let cache = Arc::new(FakeDetailsCache::new());
+        let service =
+            RoomService::new(Arc::new(FakeRoomRepo::new()), provider.clone(), cache.clone());
+        (provider, cache, service)
     }
 
     fn default_deck() -> Vec<Restaurant> {
@@ -270,6 +325,110 @@ mod tests {
         service.swipe(&room.code, user, "r1", true).await.unwrap();
         let err = service.swipe(&room.code, user, "r1", false).await.unwrap_err();
         assert!(matches!(err, CoreError::AlreadySwiped), "got {err:?}");
+    }
+
+    fn details_fixture(website: &str) -> ProviderDetails {
+        ProviderDetails {
+            website: Some(website.into()),
+            phone: Some("+1 801-555-0100".into()),
+            maps_url: Some("https://maps.example.com/r1".into()),
+            reviews: vec![crate::model::Review {
+                author: "Pat".into(),
+                rating: 5,
+                text: "Great noodles".into(),
+                relative_time: Some("2 months ago".into()),
+            }],
+        }
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_miss_fetches_from_provider_and_caches() {
+        let (provider, cache, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        let fetched = details_fixture("https://r1.example.com");
+        provider.set_details(fetched.clone());
+
+        let (restaurant, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "r1").await.unwrap();
+        assert_eq!(restaurant.id, "r1");
+        assert_eq!(details, fetched);
+        assert_eq!(provider.details_calls(), 1);
+        let (stored, _) = cache.stored("r1").expect("result must be cached");
+        assert_eq!(stored, fetched);
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_fresh_cache_skips_provider() {
+        let (provider, cache, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        let cached = details_fixture("https://cached.example.com");
+        cache.insert_at("r1", cached.clone(), Utc::now() - chrono::Duration::hours(23));
+
+        let (_, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "r1").await.unwrap();
+        assert_eq!(details, cached);
+        assert_eq!(provider.details_calls(), 0, "fresh cache must not hit the provider");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_stale_cache_refetches_and_updates() {
+        let (provider, cache, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        let stale_at = Utc::now() - chrono::Duration::hours(25);
+        cache.insert_at("r1", details_fixture("https://stale.example.com"), stale_at);
+        let fresh = details_fixture("https://fresh.example.com");
+        provider.set_details(fresh.clone());
+
+        let (_, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "r1").await.unwrap();
+        assert_eq!(details, fresh);
+        assert_eq!(provider.details_calls(), 1);
+        let (stored, fetched_at) = cache.stored("r1").unwrap();
+        assert_eq!(stored, fresh);
+        assert!(fetched_at > stale_at, "cache entry must be refreshed");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_provider_error_serves_stale_cache() {
+        let (provider, cache, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        let stale = details_fixture("https://stale.example.com");
+        cache.insert_at("r1", stale.clone(), Utc::now() - chrono::Duration::hours(25));
+        provider.fail_details("places down");
+
+        let (_, details) =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "r1").await.unwrap();
+        assert_eq!(details, stale, "stale cache must be served on provider failure");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_provider_error_without_cache_propagates() {
+        let (provider, _, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        provider.fail_details("places down");
+
+        let err =
+            service.restaurant_details(&room.code, Uuid::new_v4(), "r1").await.unwrap_err();
+        assert!(matches!(err, CoreError::Provider(_)), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_outside_deck_is_unknown_restaurant() {
+        let (_, _, service) = details_service(default_deck());
+        let (room, _) = create_default_room(&service).await;
+        let err = service
+            .restaurant_details(&room.code, Uuid::new_v4(), "not-in-deck")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, CoreError::UnknownRestaurant), "got {err:?}");
+    }
+
+    #[tokio::test]
+    async fn restaurant_details_unknown_room_is_room_not_found() {
+        let (_, _, service) = details_service(default_deck());
+        let err =
+            service.restaurant_details("NOSUCH", Uuid::new_v4(), "r1").await.unwrap_err();
+        assert!(matches!(err, CoreError::RoomNotFound), "got {err:?}");
     }
 
     #[tokio::test]

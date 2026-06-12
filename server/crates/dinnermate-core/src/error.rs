@@ -30,6 +30,10 @@ pub enum CoreError {
     AlreadySwiped,
     #[error("unknown restaurant for this room")]
     UnknownRestaurant,
+    #[error("you are not a member of this list")]
+    NotListMember,
+    #[error("the list owner cannot leave the list")]
+    OwnerCannotLeave,
     #[error("{0}")]
     InvalidParams(String),
     #[error(transparent)]

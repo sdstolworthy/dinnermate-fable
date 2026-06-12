@@ -108,6 +108,30 @@ pub struct List {
     pub created_at: DateTime<Utc>,
 }
 
+/// A list as seen by one of its members (owner rows included).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ListMembership {
+    pub list: List,
+    pub is_owner: bool,
+}
+
+/// On-demand restaurant details fetched from a provider (cached server-side).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ProviderDetails {
+    pub website: Option<String>,
+    pub phone: Option<String>,
+    pub maps_url: Option<String>,
+    pub reviews: Vec<Review>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Review {
+    pub author: String,
+    pub rating: u8,
+    pub text: String,
+    pub relative_time: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ListItem {
     pub id: Uuid,

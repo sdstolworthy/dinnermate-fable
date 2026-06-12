@@ -14,8 +14,11 @@ pub mod testing;
 pub use code::generate_code;
 pub use error::{CoreError, ProviderError, RepoError};
 pub use hours::{open_status, OpenStatus};
-pub use model::{HoursPeriod, List, ListItem, MatchEntry, Participant, Restaurant, Room, RoomParams};
+pub use model::{
+    HoursPeriod, List, ListItem, ListMembership, MatchEntry, Participant, ProviderDetails,
+    Restaurant, Review, Room, RoomParams,
+};
 pub use provider::RestaurantProvider;
-pub use repo::{ListRepo, RoomRepo};
+pub use repo::{DetailsCacheRepo, ListRepo, RoomRepo};
 pub use seed::SeedProvider;
 pub use service::{CreateRoom, ListService, NewListItem, RoomService};

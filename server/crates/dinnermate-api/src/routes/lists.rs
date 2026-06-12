@@ -130,7 +130,8 @@ pub async fn mine(
     UserId(user): UserId,
 ) -> Result<Json<MyListsResponse>, ApiError> {
     let lists = state.lists.mine(user).await?;
-    Ok(Json(MyListsResponse { lists: lists.into_iter().map(Into::into).collect() }))
+    // Task 4 adds is_owner to the DTO; until then only the list is exposed.
+    Ok(Json(MyListsResponse { lists: lists.into_iter().map(|m| m.list.into()).collect() }))
 }
 
 pub async fn get(

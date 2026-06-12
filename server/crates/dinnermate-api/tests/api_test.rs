@@ -28,6 +28,8 @@ async fn router() -> Router {
         rooms: Arc::new(RoomService::new(
             Arc::new(PgRoomRepo::new(pool.clone())),
             Arc::new(SeedProvider::new()),
+            // Task 4 replaces with PgDetailsCacheRepo (migration 0002, Task 3).
+            Arc::new(dinnermate_core::testing::NoopDetailsCache),
         )),
         lists: Arc::new(ListService::new(Arc::new(PgListRepo::new(pool)))),
     };

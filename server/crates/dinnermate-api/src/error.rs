@@ -35,6 +35,10 @@ impl ApiError {
                     CoreError::UnknownRestaurant => {
                         (StatusCode::UNPROCESSABLE_ENTITY, "UNKNOWN_RESTAURANT")
                     }
+                    CoreError::NotListMember => (StatusCode::FORBIDDEN, "NOT_LIST_MEMBER"),
+                    CoreError::OwnerCannotLeave => {
+                        (StatusCode::UNPROCESSABLE_ENTITY, "OWNER_CANNOT_LEAVE")
+                    }
                     CoreError::InvalidParams(_) => {
                         (StatusCode::UNPROCESSABLE_ENTITY, "INVALID_PARAMS")
                     }

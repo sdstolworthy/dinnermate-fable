@@ -1,7 +1,7 @@
 //! Google Places (New) `RestaurantProvider` backed by `places:searchNearby`.
 
 use async_trait::async_trait;
-use dinnermate_core::{ProviderError, Restaurant, RestaurantProvider, RoomParams};
+use dinnermate_core::{ProviderDetails, ProviderError, Restaurant, RestaurantProvider, RoomParams};
 use serde::Deserialize;
 use serde_json::json;
 
@@ -104,6 +104,14 @@ impl RestaurantProvider for GooglePlacesProvider {
             .into_iter()
             .map(|place| self.to_restaurant(place))
             .collect())
+    }
+
+    // Task 4 implements the real Place Details call; until then the details
+    // route does not exist, so this is unreachable in practice.
+    async fn details(&self, restaurant_id: &str) -> Result<ProviderDetails, ProviderError> {
+        Err(ProviderError::Unavailable(format!(
+            "place details not implemented yet (requested {restaurant_id})"
+        )))
     }
 }
 

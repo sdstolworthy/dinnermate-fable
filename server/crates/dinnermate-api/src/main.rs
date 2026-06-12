@@ -4,6 +4,7 @@ use std::sync::Arc;
 use dinnermate_api::config::{Config, RestaurantProviderKind};
 use dinnermate_api::google::{GooglePlacesProvider, GOOGLE_PLACES_BASE_URL};
 use dinnermate_api::server::{build_router, cors_layer, AppState};
+use dinnermate_core::testing::NoopDetailsCache;
 use dinnermate_core::{ListService, RestaurantProvider, RoomService, SeedProvider};
 use dinnermate_db::{connect_and_migrate, PgListRepo, PgRoomRepo};
 
@@ -32,7 +33,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let state = AppState {
-        rooms: Arc::new(RoomService::new(Arc::new(PgRoomRepo::new(pool.clone())), provider)),
+        rooms: Arc::new(RoomService::new(
+            Arc::new(PgRoomRepo::new(pool.clone())),
+            provider,
+            // Task 4 replaces with PgDetailsCacheRepo (migration 0002, Task 3).
+            Arc::new(NoopDetailsCache),
+        )),
         lists: Arc::new(ListService::new(Arc::new(PgListRepo::new(pool)))),
     };
     let router = build_router(state, cors_layer(&config.cors_allowed_origins)?);

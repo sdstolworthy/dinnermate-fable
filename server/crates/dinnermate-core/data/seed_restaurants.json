@@ -9,7 +9,45 @@
     "address": "2202 Meridian St, Maple City",
     "photo_url": null,
     "lat": 40.761587,
-    "lng": -111.890047
+    "lng": -111.890047,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-002",
@@ -21,7 +59,47 @@
     "address": "231 Crestline Blvd, Maple City",
     "photo_url": null,
     "lat": 40.773997,
-    "lng": -111.912505
+    "lng": -111.912505,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://cactusflowercantina.example.com",
+    "phone": "+1 801-555-0002"
   },
   {
     "id": "seed-003",
@@ -33,7 +111,45 @@
     "address": "1499 Marigold Ct, Maple City",
     "photo_url": null,
     "lat": 40.762293,
-    "lng": -111.884269
+    "lng": -111.884269,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "14:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-004",
@@ -45,7 +161,47 @@
     "address": "808 Willow Bend Rd, Maple City",
     "photo_url": null,
     "lat": 40.746241,
-    "lng": -111.904032
+    "lng": -111.904032,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://taqueriadoshermanas.example.com",
+    "phone": "+1 801-555-0004"
   },
   {
     "id": "seed-005",
@@ -57,7 +213,45 @@
     "address": "253 Juniper Way, Maple City",
     "photo_url": null,
     "lat": 40.763609,
-    "lng": -111.886552
+    "lng": -111.886552,
+    "hours": [
+      {
+        "day": 0,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 1,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 2,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 3,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 4,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 5,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 6,
+        "open": "17:00",
+        "close": "01:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-006",
@@ -69,7 +263,47 @@
     "address": "1890 Tannery Row, Maple City",
     "photo_url": null,
     "lat": 40.76508,
-    "lng": -111.861547
+    "lng": -111.861547,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://agavestreettacos.example.com",
+    "phone": "+1 801-555-0006"
   },
   {
     "id": "seed-007",
@@ -81,7 +315,9 @@
     "address": "525 Crestline Blvd, Maple City",
     "photo_url": null,
     "lat": 40.685979,
-    "lng": -111.813478
+    "lng": -111.813478,
+    "hours": null,
+    "utc_offset_minutes": null
   },
   {
     "id": "seed-008",
@@ -93,7 +329,42 @@
     "address": "934 Meridian St, Maple City",
     "photo_url": null,
     "lat": 40.762293,
-    "lng": -111.893251
+    "lng": -111.893251,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://lemongrasshouse.example.com",
+    "phone": "+1 801-555-0008"
   },
   {
     "id": "seed-009",
@@ -105,7 +376,45 @@
     "address": "2599 Sego Lily Ln, Maple City",
     "photo_url": null,
     "lat": 40.776933,
-    "lng": -111.908331
+    "lng": -111.908331,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-010",
@@ -117,7 +426,46 @@
     "address": "1546 Willow Bend Rd, Maple City",
     "photo_url": null,
     "lat": 40.777493,
-    "lng": -111.88333
+    "lng": -111.88333,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://siamalley.example.com"
   },
   {
     "id": "seed-011",
@@ -129,7 +477,45 @@
     "address": "2283 Quarry Rd, Maple City",
     "photo_url": null,
     "lat": 40.749098,
-    "lng": -111.903998
+    "lng": -111.903998,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-012",
@@ -141,7 +527,47 @@
     "address": "1714 Copperline Blvd, Maple City",
     "photo_url": null,
     "lat": 40.764265,
-    "lng": -111.874826
+    "lng": -111.874826,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://bangkokbreeze.example.com",
+    "phone": "+1 801-555-0012"
   },
   {
     "id": "seed-013",
@@ -153,7 +579,45 @@
     "address": "2495 Copperline Blvd, Maple City",
     "photo_url": null,
     "lat": 40.757193,
-    "lng": -111.887658
+    "lng": -111.887658,
+    "hours": [
+      {
+        "day": 0,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 1,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 2,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 3,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 4,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 5,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 6,
+        "open": "00:00",
+        "close": "23:59"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-014",
@@ -165,7 +629,47 @@
     "address": "627 Harvest St, Maple City",
     "photo_url": null,
     "lat": 40.829678,
-    "lng": -111.922702
+    "lng": -111.922702,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://nonnastable.example.com",
+    "phone": "+1 801-555-0014"
   },
   {
     "id": "seed-015",
@@ -177,7 +681,45 @@
     "address": "1658 Willow Bend Rd, Maple City",
     "photo_url": null,
     "lat": 40.749839,
-    "lng": -111.887658
+    "lng": -111.887658,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-016",
@@ -189,7 +731,47 @@
     "address": "669 Foxglove Ln, Maple City",
     "photo_url": null,
     "lat": 40.773351,
-    "lng": -111.878959
+    "lng": -111.878959,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "14:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://campagnarustica.example.com",
+    "phone": "+1 801-555-0016"
   },
   {
     "id": "seed-017",
@@ -201,7 +783,45 @@
     "address": "2343 Ironwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.760732,
-    "lng": -111.888
+    "lng": -111.888,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-018",
@@ -213,7 +833,47 @@
     "address": "1895 Tannery Row, Maple City",
     "photo_url": null,
     "lat": 40.756636,
-    "lng": -111.908631
+    "lng": -111.908631,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://semolinasage.example.com",
+    "phone": "+1 801-555-0018"
   },
   {
     "id": "seed-019",
@@ -225,7 +885,45 @@
     "address": "559 Hollyhock St, Maple City",
     "photo_url": null,
     "lat": 40.762533,
-    "lng": -111.867684
+    "lng": -111.867684,
+    "hours": [
+      {
+        "day": 0,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 1,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 2,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 3,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 4,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 5,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 6,
+        "open": "17:00",
+        "close": "01:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-020",
@@ -237,7 +935,46 @@
     "address": "1221 Harvest St, Maple City",
     "photo_url": null,
     "lat": 40.755872,
-    "lng": -111.862389
+    "lng": -111.862389,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://momijiizakaya.example.com"
   },
   {
     "id": "seed-021",
@@ -249,7 +986,45 @@
     "address": "2909 Cinder Ave, Maple City",
     "photo_url": null,
     "lat": 40.652649,
-    "lng": -111.961728
+    "lng": -111.961728,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-022",
@@ -261,7 +1036,47 @@
     "address": "294 Ironwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.769819,
-    "lng": -111.89877
+    "lng": -111.89877,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "14:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://ramenkumo.example.com",
+    "phone": "+1 801-555-0022"
   },
   {
     "id": "seed-023",
@@ -273,7 +1088,45 @@
     "address": "148 Willow Bend Rd, Maple City",
     "photo_url": null,
     "lat": 40.761246,
-    "lng": -111.895702
+    "lng": -111.895702,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-024",
@@ -285,7 +1138,47 @@
     "address": "1357 Meridian St, Maple City",
     "photo_url": null,
     "lat": 40.737756,
-    "lng": -111.88096
+    "lng": -111.88096,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://sakurastone.example.com",
+    "phone": "+1 801-555-0024"
   },
   {
     "id": "seed-025",
@@ -297,7 +1190,45 @@
     "address": "2236 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.736843,
-    "lng": -111.886782
+    "lng": -111.886782,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-026",
@@ -309,7 +1240,47 @@
     "address": "1201 Ironwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.767141,
-    "lng": -111.874421
+    "lng": -111.874421,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://masalajunction.example.com",
+    "phone": "+1 801-555-0026"
   },
   {
     "id": "seed-027",
@@ -321,7 +1292,40 @@
     "address": "288 Quarry Rd, Maple City",
     "photo_url": null,
     "lat": 40.769214,
-    "lng": -111.870058
+    "lng": -111.870058,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-028",
@@ -333,7 +1337,47 @@
     "address": "1934 Foxglove Ln, Maple City",
     "photo_url": null,
     "lat": 40.788989,
-    "lng": -111.80418
+    "lng": -111.80418,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://bombaymeadow.example.com",
+    "phone": "+1 801-555-0028"
   },
   {
     "id": "seed-029",
@@ -345,7 +1389,45 @@
     "address": "2821 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.770153,
-    "lng": -111.887679
+    "lng": -111.887679,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-030",
@@ -357,7 +1439,46 @@
     "address": "2215 Quarry Rd, Maple City",
     "photo_url": null,
     "lat": 40.767124,
-    "lng": -111.885383
+    "lng": -111.885383,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://dosarepublic.example.com"
   },
   {
     "id": "seed-031",
@@ -369,7 +1490,9 @@
     "address": "439 Harvest St, Maple City",
     "photo_url": null,
     "lat": 40.776266,
-    "lng": -111.900845
+    "lng": -111.900845,
+    "hours": null,
+    "utc_offset_minutes": null
   },
   {
     "id": "seed-032",
@@ -381,7 +1504,47 @@
     "address": "1182 Cinder Ave, Maple City",
     "photo_url": null,
     "lat": 40.752053,
-    "lng": -111.886791
+    "lng": -111.886791,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://hickoryrye.example.com",
+    "phone": "+1 801-555-0032"
   },
   {
     "id": "seed-033",
@@ -393,7 +1556,45 @@
     "address": "999 Willow Bend Rd, Maple City",
     "photo_url": null,
     "lat": 40.759659,
-    "lng": -111.89272
+    "lng": -111.89272,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-034",
@@ -405,7 +1606,47 @@
     "address": "1723 Alder St, Maple City",
     "photo_url": null,
     "lat": 40.760045,
-    "lng": -111.883616
+    "lng": -111.883616,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://bluebirdburgerco.example.com",
+    "phone": "+1 801-555-0034"
   },
   {
     "id": "seed-035",
@@ -417,7 +1658,45 @@
     "address": "2976 Quarry Rd, Maple City",
     "photo_url": null,
     "lat": 40.802839,
-    "lng": -111.953165
+    "lng": -111.953165,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-036",
@@ -429,7 +1708,47 @@
     "address": "607 Foxglove Ln, Maple City",
     "photo_url": null,
     "lat": 40.770084,
-    "lng": -111.897719
+    "lng": -111.897719,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://junipertapkitchen.example.com",
+    "phone": "+1 801-555-0036"
   },
   {
     "id": "seed-037",
@@ -441,7 +1760,45 @@
     "address": "1610 Birchwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.744946,
-    "lng": -111.865534
+    "lng": -111.865534,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "14:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-038",
@@ -453,7 +1810,47 @@
     "address": "2871 Hollyhock St, Maple City",
     "photo_url": null,
     "lat": 40.745106,
-    "lng": -111.864871
+    "lng": -111.864871,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://dumplinggarden.example.com",
+    "phone": "+1 801-555-0038"
   },
   {
     "id": "seed-039",
@@ -465,7 +1862,45 @@
     "address": "1390 Tannery Row, Maple City",
     "photo_url": null,
     "lat": 40.760058,
-    "lng": -111.894024
+    "lng": -111.894024,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-040",
@@ -477,7 +1912,46 @@
     "address": "873 Larkspur Dr, Maple City",
     "photo_url": null,
     "lat": 40.756603,
-    "lng": -111.905343
+    "lng": -111.905343,
+    "hours": [
+      {
+        "day": 0,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 1,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 2,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 3,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 4,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 5,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 6,
+        "open": "17:00",
+        "close": "01:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://sichuanember.example.com"
   },
   {
     "id": "seed-041",
@@ -489,7 +1963,45 @@
     "address": "1444 Cinder Ave, Maple City",
     "photo_url": null,
     "lat": 40.748232,
-    "lng": -111.900301
+    "lng": -111.900301,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-042",
@@ -501,7 +2013,47 @@
     "address": "2341 Alder St, Maple City",
     "photo_url": null,
     "lat": 40.671335,
-    "lng": -111.871524
+    "lng": -111.871524,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://baohouseon5th.example.com",
+    "phone": "+1 801-555-0042"
   },
   {
     "id": "seed-043",
@@ -513,7 +2065,45 @@
     "address": "2798 Hollyhock St, Maple City",
     "photo_url": null,
     "lat": 40.775628,
-    "lng": -111.872184
+    "lng": -111.872184,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "11:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "11:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-044",
@@ -525,7 +2115,47 @@
     "address": "2719 Larkspur Dr, Maple City",
     "photo_url": null,
     "lat": 40.780565,
-    "lng": -111.896134
+    "lng": -111.896134,
+    "hours": [
+      {
+        "day": 0,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 1,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 2,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 3,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 4,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 5,
+        "open": "00:00",
+        "close": "23:59"
+      },
+      {
+        "day": 6,
+        "open": "00:00",
+        "close": "23:59"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://cyprusbreeze.example.com",
+    "phone": "+1 801-555-0044"
   },
   {
     "id": "seed-045",
@@ -537,7 +2167,45 @@
     "address": "738 Harvest St, Maple City",
     "photo_url": null,
     "lat": 40.772542,
-    "lng": -111.919057
+    "lng": -111.919057,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-046",
@@ -549,7 +2217,42 @@
     "address": "1215 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.770386,
-    "lng": -111.895969
+    "lng": -111.895969,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://santoriniblue.example.com",
+    "phone": "+1 801-555-0046"
   },
   {
     "id": "seed-047",
@@ -561,7 +2264,45 @@
     "address": "2980 Birchwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.741852,
-    "lng": -111.903211
+    "lng": -111.903211,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-048",
@@ -573,7 +2314,47 @@
     "address": "1523 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.774306,
-    "lng": -111.862426
+    "lng": -111.862426,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://aegeanhearth.example.com",
+    "phone": "+1 801-555-0048"
   },
   {
     "id": "seed-049",
@@ -585,7 +2366,9 @@
     "address": "2223 Harvest St, Maple City",
     "photo_url": null,
     "lat": 40.806307,
-    "lng": -111.973492
+    "lng": -111.973492,
+    "hours": null,
+    "utc_offset_minutes": null
   },
   {
     "id": "seed-050",
@@ -597,7 +2380,46 @@
     "address": "1630 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.763169,
-    "lng": -111.909259
+    "lng": -111.909259,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://kimchialley.example.com"
   },
   {
     "id": "seed-051",
@@ -609,7 +2431,45 @@
     "address": "2091 Larkspur Dr, Maple City",
     "photo_url": null,
     "lat": 40.784786,
-    "lng": -111.898701
+    "lng": -111.898701,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-052",
@@ -621,7 +2481,47 @@
     "address": "138 Cinder Ave, Maple City",
     "photo_url": null,
     "lat": 40.768221,
-    "lng": -111.895177
+    "lng": -111.895177,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "14:30"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "14:30"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://bibimbox.example.com",
+    "phone": "+1 801-555-0052"
   },
   {
     "id": "seed-053",
@@ -633,7 +2533,45 @@
     "address": "811 Ironwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.767928,
-    "lng": -111.896279
+    "lng": -111.896279,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:30"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:30"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-054",
@@ -645,7 +2583,47 @@
     "address": "2389 Tannery Row, Maple City",
     "photo_url": null,
     "lat": 40.752583,
-    "lng": -111.874232
+    "lng": -111.874232,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://moonjarkitchen.example.com",
+    "phone": "+1 801-555-0054"
   },
   {
     "id": "seed-055",
@@ -657,7 +2635,9 @@
     "address": "1875 Marigold Ct, Maple City",
     "photo_url": null,
     "lat": 40.756626,
-    "lng": -111.866541
+    "lng": -111.866541,
+    "hours": null,
+    "utc_offset_minutes": null
   },
   {
     "id": "seed-056",
@@ -669,7 +2649,47 @@
     "address": "1096 Larkspur Dr, Maple City",
     "photo_url": null,
     "lat": 40.813033,
-    "lng": -111.754935
+    "lng": -111.754935,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "22:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "22:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://lotuslime.example.com",
+    "phone": "+1 801-555-0056"
   },
   {
     "id": "seed-057",
@@ -681,7 +2701,45 @@
     "address": "1182 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.77747,
-    "lng": -111.9063
+    "lng": -111.9063,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "21:30"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-058",
@@ -693,7 +2751,47 @@
     "address": "539 Birchwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.763321,
-    "lng": -111.873301
+    "lng": -111.873301,
+    "hours": [
+      {
+        "day": 0,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 1,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 2,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 3,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 4,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 5,
+        "open": "17:00",
+        "close": "01:00"
+      },
+      {
+        "day": 6,
+        "open": "17:00",
+        "close": "01:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://hanoicornercafe.example.com",
+    "phone": "+1 801-555-0058"
   },
   {
     "id": "seed-059",
@@ -705,7 +2803,45 @@
     "address": "1396 Vesper St, Maple City",
     "photo_url": null,
     "lat": 40.743008,
-    "lng": -111.868531
+    "lng": -111.868531,
+    "hours": [
+      {
+        "day": 0,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 1,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 2,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 3,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 4,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 5,
+        "open": "10:30",
+        "close": "21:00"
+      },
+      {
+        "day": 6,
+        "open": "10:30",
+        "close": "21:00"
+      }
+    ],
+    "utc_offset_minutes": -360
   },
   {
     "id": "seed-060",
@@ -717,6 +2853,45 @@
     "address": "1439 Ironwood Ave, Maple City",
     "photo_url": null,
     "lat": 40.754189,
-    "lng": -111.895065
+    "lng": -111.895065,
+    "hours": [
+      {
+        "day": 0,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 1,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 2,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 3,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 4,
+        "open": "11:00",
+        "close": "22:00"
+      },
+      {
+        "day": 5,
+        "open": "11:00",
+        "close": "23:00"
+      },
+      {
+        "day": 6,
+        "open": "11:00",
+        "close": "23:00"
+      }
+    ],
+    "utc_offset_minutes": -360,
+    "website": "https://saigonalleyeats.example.com"
   }
 ]

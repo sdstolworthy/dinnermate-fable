@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use dinnermate_core::{List, ListItem, ListRepo, RepoError};
+use dinnermate_core::{List, ListItem, ListMembership, ListRepo, RepoError};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -130,14 +130,38 @@ impl ListRepo for PgListRepo {
         Ok(())
     }
 
-    async fn lists_for_owner(&self, owner: Uuid) -> Result<Vec<List>, RepoError> {
+    // The three methods below are interim stubs: the list_members table only
+    // exists after migration 0002 (Task 3), which replaces them with real
+    // queries. They preserve v1 behavior (owner-only "mine", open add_item)
+    // so the API keeps working between tasks.
+
+    async fn join(&self, _list_id: Uuid, _user_id: Uuid) -> Result<(), RepoError> {
+        Err(RepoError::Database(
+            "list membership requires migration 0002 (Task 3)".to_string(),
+        ))
+    }
+
+    async fn leave(&self, _list_id: Uuid, _user_id: Uuid) -> Result<(), RepoError> {
+        Err(RepoError::Database(
+            "list membership requires migration 0002 (Task 3)".to_string(),
+        ))
+    }
+
+    async fn is_member(&self, _list_id: Uuid, _user_id: Uuid) -> Result<bool, RepoError> {
+        Ok(true)
+    }
+
+    async fn lists_for_member(&self, user_id: Uuid) -> Result<Vec<ListMembership>, RepoError> {
         let rows: Vec<ListRow> = sqlx::query_as(
             "SELECT * FROM lists WHERE owner_user_id = $1 ORDER BY created_at DESC",
         )
-        .bind(owner)
+        .bind(user_id)
         .fetch_all(&self.pool)
         .await
         .map_err(into_repo_error)?;
-        Ok(rows.into_iter().map(Into::into).collect())
+        Ok(rows
+            .into_iter()
+            .map(|row| ListMembership { list: row.into(), is_owner: true })
+            .collect())
     }
 }

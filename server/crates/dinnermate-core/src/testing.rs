@@ -14,9 +14,12 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::error::{ProviderError, RepoError};
-use crate::model::{List, ListItem, MatchEntry, Participant, Restaurant, Room, RoomParams};
+use crate::model::{
+    List, ListItem, ListMembership, MatchEntry, Participant, ProviderDetails, Restaurant, Room,
+    RoomParams,
+};
 use crate::provider::RestaurantProvider;
-use crate::repo::{ListRepo, RoomRepo};
+use crate::repo::{DetailsCacheRepo, ListRepo, RoomRepo};
 
 /// Restaurant at the default test center (passes `valid_params` radius).
 pub fn restaurant(id: &str, name: &str, cuisine: &str, price: u8, rating: f32) -> Restaurant {
@@ -50,12 +53,113 @@ pub fn valid_params() -> RoomParams {
     }
 }
 
-pub struct FakeProvider(pub Vec<Restaurant>);
+struct FakeProviderState {
+    /// `Err(msg)` is surfaced as `ProviderError::Unavailable(msg)`
+    /// (`ProviderError` itself is not `Clone`).
+    details_result: Result<ProviderDetails, String>,
+    details_calls: u32,
+}
+
+pub struct FakeProvider {
+    restaurants: Vec<Restaurant>,
+    state: Mutex<FakeProviderState>,
+}
+
+impl FakeProvider {
+    pub fn new(restaurants: Vec<Restaurant>) -> Self {
+        Self {
+            restaurants,
+            state: Mutex::new(FakeProviderState {
+                details_result: Ok(ProviderDetails::default()),
+                details_calls: 0,
+            }),
+        }
+    }
+
+    /// Next `details` calls return this payload.
+    pub fn set_details(&self, details: ProviderDetails) {
+        self.state.lock().unwrap().details_result = Ok(details);
+    }
+
+    /// Next `details` calls fail with `ProviderError::Unavailable(message)`.
+    pub fn fail_details(&self, message: &str) {
+        self.state.lock().unwrap().details_result = Err(message.to_string());
+    }
+
+    pub fn details_calls(&self) -> u32 {
+        self.state.lock().unwrap().details_calls
+    }
+}
 
 #[async_trait]
 impl RestaurantProvider for FakeProvider {
     async fn search(&self, _params: &RoomParams) -> Result<Vec<Restaurant>, ProviderError> {
-        Ok(self.0.clone())
+        Ok(self.restaurants.clone())
+    }
+
+    async fn details(&self, _restaurant_id: &str) -> Result<ProviderDetails, ProviderError> {
+        let mut state = self.state.lock().unwrap();
+        state.details_calls += 1;
+        state
+            .details_result
+            .clone()
+            .map_err(ProviderError::Unavailable)
+    }
+}
+
+#[derive(Default)]
+pub struct FakeDetailsCache {
+    entries: Mutex<HashMap<String, (ProviderDetails, DateTime<Utc>)>>,
+}
+
+impl FakeDetailsCache {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Preload an entry with an explicit `fetched_at` (staleness tests).
+    pub fn insert_at(&self, restaurant_id: &str, details: ProviderDetails, fetched_at: DateTime<Utc>) {
+        self.entries
+            .lock()
+            .unwrap()
+            .insert(restaurant_id.to_string(), (details, fetched_at));
+    }
+
+    pub fn stored(&self, restaurant_id: &str) -> Option<(ProviderDetails, DateTime<Utc>)> {
+        self.entries.lock().unwrap().get(restaurant_id).cloned()
+    }
+}
+
+#[async_trait]
+impl DetailsCacheRepo for FakeDetailsCache {
+    async fn get(
+        &self,
+        restaurant_id: &str,
+    ) -> Result<Option<(ProviderDetails, DateTime<Utc>)>, RepoError> {
+        Ok(self.entries.lock().unwrap().get(restaurant_id).cloned())
+    }
+
+    async fn put(&self, restaurant_id: &str, details: &ProviderDetails) -> Result<(), RepoError> {
+        self.insert_at(restaurant_id, details.clone(), Utc::now());
+        Ok(())
+    }
+}
+
+/// Cache that stores nothing: every `get` misses, every `put` is dropped.
+/// For wiring sites that don't exercise details caching.
+pub struct NoopDetailsCache;
+
+#[async_trait]
+impl DetailsCacheRepo for NoopDetailsCache {
+    async fn get(
+        &self,
+        _restaurant_id: &str,
+    ) -> Result<Option<(ProviderDetails, DateTime<Utc>)>, RepoError> {
+        Ok(None)
+    }
+
+    async fn put(&self, _restaurant_id: &str, _details: &ProviderDetails) -> Result<(), RepoError> {
+        Ok(())
     }
 }
 
@@ -230,9 +334,39 @@ impl RoomRepo for FakeRoomRepo {
     }
 }
 
+struct Membership {
+    list_id: Uuid,
+    user_id: Uuid,
+    /// Monotonic join order standing in for `joined_at` — `Utc::now()` can
+    /// produce equal timestamps within a test, making "desc" ambiguous.
+    joined_seq: u64,
+}
+
+#[derive(Default)]
+struct ListState {
+    lists: HashMap<String, (List, Vec<ListItem>)>,
+    members: Vec<Membership>,
+    next_seq: u64,
+}
+
+impl ListState {
+    fn insert_membership(&mut self, list_id: Uuid, user_id: Uuid) {
+        if self
+            .members
+            .iter()
+            .any(|m| m.list_id == list_id && m.user_id == user_id)
+        {
+            return;
+        }
+        let joined_seq = self.next_seq;
+        self.next_seq += 1;
+        self.members.push(Membership { list_id, user_id, joined_seq });
+    }
+}
+
 #[derive(Default)]
 pub struct FakeListRepo {
-    lists: Mutex<HashMap<String, (List, Vec<ListItem>)>>,
+    state: Mutex<ListState>,
 }
 
 impl FakeListRepo {
@@ -244,21 +378,23 @@ impl FakeListRepo {
 #[async_trait]
 impl ListRepo for FakeListRepo {
     async fn create(&self, list: &List) -> Result<(), RepoError> {
-        let mut lists = self.lists.lock().unwrap();
-        if lists.contains_key(&list.code) {
+        let mut state = self.state.lock().unwrap();
+        if state.lists.contains_key(&list.code) {
             return Err(RepoError::Conflict);
         }
-        lists.insert(list.code.clone(), (list.clone(), Vec::new()));
+        state.lists.insert(list.code.clone(), (list.clone(), Vec::new()));
+        state.insert_membership(list.id, list.owner_user_id);
         Ok(())
     }
 
     async fn find_by_code(&self, code: &str) -> Result<Option<(List, Vec<ListItem>)>, RepoError> {
-        Ok(self.lists.lock().unwrap().get(code).cloned())
+        Ok(self.state.lock().unwrap().lists.get(code).cloned())
     }
 
     async fn add_item(&self, item: &ListItem) -> Result<(), RepoError> {
-        let mut lists = self.lists.lock().unwrap();
-        let (_, items) = lists
+        let mut state = self.state.lock().unwrap();
+        let (_, items) = state
+            .lists
             .values_mut()
             .find(|(list, _)| list.id == item.list_id)
             .ok_or(RepoError::NotFound)?;
@@ -266,14 +402,48 @@ impl ListRepo for FakeListRepo {
         Ok(())
     }
 
-    async fn lists_for_owner(&self, owner: Uuid) -> Result<Vec<List>, RepoError> {
-        Ok(self
-            .lists
+    async fn join(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError> {
+        self.state.lock().unwrap().insert_membership(list_id, user_id);
+        Ok(())
+    }
+
+    async fn leave(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError> {
+        self.state
             .lock()
             .unwrap()
-            .values()
-            .filter(|(list, _)| list.owner_user_id == owner)
-            .map(|(list, _)| list.clone())
-            .collect())
+            .members
+            .retain(|m| !(m.list_id == list_id && m.user_id == user_id));
+        Ok(())
+    }
+
+    async fn is_member(&self, list_id: Uuid, user_id: Uuid) -> Result<bool, RepoError> {
+        Ok(self
+            .state
+            .lock()
+            .unwrap()
+            .members
+            .iter()
+            .any(|m| m.list_id == list_id && m.user_id == user_id))
+    }
+
+    async fn lists_for_member(&self, user_id: Uuid) -> Result<Vec<ListMembership>, RepoError> {
+        let state = self.state.lock().unwrap();
+        let mut memberships: Vec<(u64, ListMembership)> = state
+            .members
+            .iter()
+            .filter(|m| m.user_id == user_id)
+            .filter_map(|m| {
+                state
+                    .lists
+                    .values()
+                    .find(|(list, _)| list.id == m.list_id)
+                    .map(|(list, _)| {
+                        let is_owner = list.owner_user_id == user_id;
+                        (m.joined_seq, ListMembership { list: list.clone(), is_owner })
+                    })
+            })
+            .collect();
+        memberships.sort_by_key(|(seq, _)| std::cmp::Reverse(*seq));
+        Ok(memberships.into_iter().map(|(_, m)| m).collect())
     }
 }

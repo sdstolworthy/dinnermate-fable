@@ -1,8 +1,11 @@
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::error::RepoError;
-use crate::model::{List, ListItem, MatchEntry, Participant, Restaurant, Room};
+use crate::model::{
+    List, ListItem, ListMembership, MatchEntry, Participant, ProviderDetails, Restaurant, Room,
+};
 
 #[async_trait]
 pub trait RoomRepo: Send + Sync {
@@ -35,8 +38,24 @@ pub trait RoomRepo: Send + Sync {
 #[async_trait]
 pub trait ListRepo: Send + Sync {
     /// Returns `RepoError::Conflict` if the list code is already taken.
+    /// Also inserts the owner's membership row (same transaction).
     async fn create(&self, list: &List) -> Result<(), RepoError>;
     async fn find_by_code(&self, code: &str) -> Result<Option<(List, Vec<ListItem>)>, RepoError>;
     async fn add_item(&self, item: &ListItem) -> Result<(), RepoError>;
-    async fn lists_for_owner(&self, owner: Uuid) -> Result<Vec<List>, RepoError>;
+    /// Idempotent: joining a list you are already a member of is a no-op.
+    async fn join(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError>;
+    async fn leave(&self, list_id: Uuid, user_id: Uuid) -> Result<(), RepoError>;
+    async fn is_member(&self, list_id: Uuid, user_id: Uuid) -> Result<bool, RepoError>;
+    /// All lists the user belongs to (owned and joined), joined_at desc.
+    async fn lists_for_member(&self, user_id: Uuid) -> Result<Vec<ListMembership>, RepoError>;
+}
+
+#[async_trait]
+pub trait DetailsCacheRepo: Send + Sync {
+    async fn get(
+        &self,
+        restaurant_id: &str,
+    ) -> Result<Option<(ProviderDetails, DateTime<Utc>)>, RepoError>;
+    /// Upsert; `fetched_at` is set to now().
+    async fn put(&self, restaurant_id: &str, details: &ProviderDetails) -> Result<(), RepoError>;
 }
