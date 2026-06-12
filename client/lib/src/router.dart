@@ -7,6 +7,7 @@ import 'screens/home.dart';
 import 'screens/list_detail.dart';
 import 'screens/lists.dart';
 import 'screens/matches.dart';
+import 'screens/restaurant_details.dart';
 import 'screens/room.dart';
 import 'state/lists_state.dart';
 import 'state/room_state.dart';
@@ -45,6 +46,13 @@ GoRouter buildRouter() {
             child: MatchesScreen(code: code),
           );
         },
+      ),
+      GoRoute(
+        path: '/r/:code/d/:rid',
+        builder: (context, state) => RestaurantDetailsScreen(
+          code: state.pathParameters['code']!.toUpperCase(),
+          restaurantId: state.pathParameters['rid']!,
+        ),
       ),
       GoRoute(
         path: '/lists',

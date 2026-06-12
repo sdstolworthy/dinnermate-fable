@@ -12,6 +12,7 @@ class MatchTile extends StatelessWidget {
     required this.restaurant,
     required this.likeCount,
     this.onAddToList,
+    this.onTap,
   });
 
   final int rank;
@@ -19,67 +20,76 @@ class MatchTile extends StatelessWidget {
   final int likeCount;
   final VoidCallback? onAddToList;
 
+  /// Fired when the tile body is tapped (the add-to-list button stays its
+  /// own tap target).
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 28,
-              child: Text(
-                '$rank',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w800,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                child: Text(
+                  '$rank',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            _avatar(),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${restaurant.cuisine} · ${'\$' * restaurant.priceLevel}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: scheme.outline),
-                  ),
-                ],
+              _avatar(),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      restaurant.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${restaurant.cuisine} · ${'\$' * restaurant.priceLevel}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: scheme.outline),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(999),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$likeCount liked',
+                  style: theme.textTheme.labelLarge
+                      ?.copyWith(color: scheme.onPrimaryContainer),
+                ),
               ),
-              child: Text(
-                '$likeCount liked',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(color: scheme.onPrimaryContainer),
-              ),
-            ),
-            if (onAddToList != null)
-              IconButton(
-                onPressed: onAddToList,
-                tooltip: 'Add to a list',
-                icon: const Icon(Icons.playlist_add_rounded),
-              ),
-          ],
+              if (onAddToList != null)
+                IconButton(
+                  onPressed: onAddToList,
+                  tooltip: 'Add to a list',
+                  icon: const Icon(Icons.playlist_add_rounded),
+                ),
+            ],
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
@@ -85,6 +86,8 @@ class MatchesScreen extends StatelessWidget {
                     rank: index + 1,
                     restaurant: entry.restaurant,
                     likeCount: entry.likeCount,
+                    onTap: () =>
+                        context.push('/r/$code/d/${entry.restaurant.id}'),
                     onAddToList: () =>
                         _showAddToList(context, entry.restaurant),
                   ),
@@ -217,12 +220,12 @@ class _AddToListSheetState extends State<_AddToListSheet> {
                     ?.copyWith(color: theme.colorScheme.outline),
               )
             else
-              for (final list in lists.mine!)
+              for (final myList in lists.mine!)
                 ListTile(
                   leading: const Text('📋', style: TextStyle(fontSize: 22)),
-                  title: Text(list.name),
-                  subtitle: Text('Code ${list.code}'),
-                  onTap: _busy ? null : () => _addTo(list),
+                  title: Text(myList.list.name),
+                  subtitle: Text('Code ${myList.list.code}'),
+                  onTap: _busy ? null : () => _addTo(myList.list),
                 ),
             const SizedBox(height: 16),
             Row(

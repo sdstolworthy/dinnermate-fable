@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
@@ -20,7 +21,10 @@ class ListDetailScreen extends StatefulWidget {
 class _ListDetailScreenState extends State<ListDetailScreen> {
   DinnerList? _list;
   List<ListItem> _items = const [];
+  bool _isMember = false;
+  bool _isOwner = false;
   bool _loading = true;
+  bool _joining = false;
   String? _error;
 
   @override
@@ -36,11 +40,14 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
       _error = null;
     });
     try {
-      final (list, items) = await lists.openByCode(widget.code);
+      final (list, items, :isMember, :isOwner) =
+          await lists.openByCode(widget.code);
       if (!mounted) return;
       setState(() {
         _list = list;
         _items = items;
+        _isMember = isMember;
+        _isOwner = isOwner;
       });
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -51,6 +58,120 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _join() async {
+    final lists = context.read<ListsState>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _joining = true);
+    try {
+      await lists.join(widget.code);
+      if (!mounted) return;
+      await _load();
+    } on Exception {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't join the list. Try again?")),
+      );
+    } finally {
+      if (mounted) setState(() => _joining = false);
+    }
+  }
+
+  Future<void> _confirmLeave() async {
+    final lists = context.read<ListsState>();
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Leave this list?'),
+        content: const Text(
+            "You'll stop seeing it in My Lists. You can rejoin anytime "
+            'with the code.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await lists.leave(widget.code);
+      if (router.canPop()) {
+        router.pop();
+      } else {
+        router.go('/lists');
+      }
+    } on Exception {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't leave the list. Try again?")),
+      );
+    }
+  }
+
+  void _showShareSheet() {
+    final inviteLink = '${Uri.base.origin}/#/l/${widget.code}';
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        void copy(String text, String confirmation) {
+          Clipboard.setData(ClipboardData(text: text));
+          Navigator.pop(sheetContext);
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(confirmation)));
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Share this list',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Friends with the link or code can join and add spots.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.link_rounded),
+                  title: const Text('Copy invite link'),
+                  subtitle: Text(
+                    inviteLink,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => copy(inviteLink, 'Invite link copied!'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.copy_rounded),
+                  title: const Text('Copy code'),
+                  subtitle: Text(widget.code),
+                  onTap: () => copy(widget.code, 'List code copied!'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _copyCode() {
@@ -130,13 +251,46 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_list?.name ?? 'List')),
-      floatingActionButton: _list == null
+      appBar: AppBar(
+        title: Text(_list?.name ?? 'List'),
+        actions: [
+          if (_isOwner)
+            IconButton(
+              onPressed: _showShareSheet,
+              tooltip: 'Share list',
+              icon: const Icon(Icons.ios_share_rounded),
+            ),
+          if (_isMember && !_isOwner)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'leave') _confirmLeave();
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'leave', child: Text('Leave list')),
+              ],
+            ),
+        ],
+      ),
+      floatingActionButton: _list == null || !_isMember
           ? null
           : FloatingActionButton.extended(
               onPressed: _addItemDialog,
               icon: const Icon(Icons.add),
               label: const Text('Add a spot'),
+            ),
+      bottomNavigationBar: _list == null || _isMember
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: FilledButton(
+                  onPressed: _joining ? null : _join,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                  ),
+                  child: const Text('Join this list'),
+                ),
+              ),
             ),
       body: _body(),
     );
@@ -176,7 +330,9 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                     const Text('🍽️', style: TextStyle(fontSize: 48)),
                     const SizedBox(height: 12),
                     Text(
-                      'Nothing here yet — add your first spot.',
+                      _isMember
+                          ? 'Nothing here yet — add your first spot.'
+                          : 'Nothing here yet.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyLarge,
                     ),
@@ -187,8 +343,8 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
               for (final item in _items)
                 Card(
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 6),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                     leading: Text(
                       emojiForCuisine(item.cuisine ?? ''),
                       style: const TextStyle(fontSize: 26),

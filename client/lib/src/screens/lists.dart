@@ -47,9 +47,8 @@ class _ListsScreenState extends State<ListsScreen> {
               labelText: 'List name',
               hintText: 'Date night spots',
             ),
-            validator: (value) => (value == null || value.trim().isEmpty)
-                ? 'Enter a name'
-                : null,
+            validator: (value) =>
+                (value == null || value.trim().isEmpty) ? 'Enter a name' : null,
             onFieldSubmitted: (_) {
               if (formKey.currentState?.validate() == true) {
                 Navigator.pop(dialogContext, true);
@@ -153,24 +152,58 @@ class _ListsScreenState extends State<ListsScreen> {
                 ),
               )
             else
-              for (final list in mine)
+              for (final myList in mine)
                 Card(
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     leading: const Text('📋', style: TextStyle(fontSize: 26)),
-                    title: Text(
-                      list.name,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                    title: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            myList.list.name,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        if (!myList.isOwner) ...[
+                          const SizedBox(width: 8),
+                          const _SharedBadge(),
+                        ],
+                      ],
                     ),
-                    subtitle: Text('Code ${list.code}'),
+                    subtitle: Text('Code ${myList.list.code}'),
                     trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => context.push('/l/${list.code}'),
+                    onTap: () => context.push('/l/${myList.list.code}'),
                   ),
                 ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _SharedBadge extends StatelessWidget {
+  const _SharedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: scheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        'shared',
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: scheme.onSecondaryContainer),
       ),
     );
   }
