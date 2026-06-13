@@ -115,6 +115,26 @@ async fn room_create_and_find_by_code_roundtrip_preserves_deck_order() {
 }
 
 #[tokio::test]
+async fn room_eat_at_roundtrips_some_and_none() {
+    let repo = PgRoomRepo::new(pool().await);
+    let eat_at: DateTime<Utc> = "2026-06-13T01:00:00Z".parse().unwrap();
+
+    for (name, value) in [("set", Some(eat_at)), ("unset", None)] {
+        let mut room = room(&unique_code());
+        room.params.eat_at_utc = value;
+
+        repo.create(&room, &[restaurant("r-1", "One")]).await.expect("create room");
+        let (found, _) = repo
+            .find_by_code(&room.code)
+            .await
+            .expect("find_by_code")
+            .expect("room should exist");
+
+        assert_eq!(found.params.eat_at_utc, value, "eat_at {name}");
+    }
+}
+
+#[tokio::test]
 async fn find_by_code_unknown_returns_none() {
     let repo = PgRoomRepo::new(pool().await);
     let result = repo.find_by_code("ZZZZ99").await.expect("find_by_code");

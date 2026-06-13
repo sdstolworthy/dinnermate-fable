@@ -32,6 +32,7 @@ struct RoomRow {
     price_min: i16,
     price_max: i16,
     min_rating: f32,
+    eat_at: Option<DateTime<Utc>>,
     created_by: Uuid,
     created_at: DateTime<Utc>,
     source_list_name: Option<String>,
@@ -52,7 +53,7 @@ impl From<RoomRow> for Room {
                 price_min: row.price_min as u8,
                 price_max: row.price_max as u8,
                 min_rating: row.min_rating,
-                eat_at_utc: None, // mealtime Task2: map rooms.eat_at column
+                eat_at_utc: row.eat_at,
             },
             created_by: row.created_by,
             created_at: row.created_at,
@@ -134,8 +135,8 @@ impl RoomRepo for PgRoomRepo {
         sqlx::query(
             "INSERT INTO rooms (id, code, name, location_lat, location_lng, location_label, \
              radius_m, cuisines, price_min, price_max, min_rating, created_by, created_at, \
-             source_list_name) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)",
+             source_list_name, eat_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)",
         )
         .bind(room.id)
         .bind(&room.code)
@@ -151,6 +152,7 @@ impl RoomRepo for PgRoomRepo {
         .bind(room.created_by)
         .bind(room.created_at)
         .bind(&room.source_list_name)
+        .bind(room.params.eat_at_utc)
         .execute(&mut *tx)
         .await
         .map_err(into_repo_error)?;

@@ -57,8 +57,10 @@ fn join_address(tags: &HashMap<String, String>) -> String {
 /// Maps one Overpass element; `None` drops it from the deck. Nodes carry
 /// their own coords, ways/relations rely on `out center`; an element with
 /// neither cannot be shown on a map or distance-filtered, so it is skipped.
-/// OSM has no rating/price/photo data and we do no tz lookup, so those stay
-/// `None` and the unknown-passes filter keeps the entries.
+/// OSM has no rating/price/photo data, so those stay `None` and the
+/// unknown-passes filter keeps the entries. The UTC offset is resolved from
+/// the coords at search time — a snapshot; DST flips mid-room-life are
+/// accepted because rooms are short-lived (see the meal-time design doc).
 fn to_restaurant(element: Element) -> Option<Restaurant> {
     let (lat, lng) = element
         .lat
@@ -90,7 +92,7 @@ fn to_restaurant(element: Element) -> Option<Restaurant> {
         lat: Some(lat),
         lng: Some(lng),
         hours,
-        utc_offset_minutes: None,
+        utc_offset_minutes: crate::tz::utc_offset_minutes(lat, lng, chrono::Utc::now()),
     })
 }
 
@@ -315,9 +317,16 @@ mod tests {
         expected_hours.push(period(0, "12:00", "23:00"));
         assert_eq!(node.hours.as_deref(), Some(expected_hours.as_slice()));
         assert_eq!(
-            (node.rating, node.price_level, node.rating_count, node.photo_url.as_deref(), node.utc_offset_minutes),
-            (None, None, None, None, None),
-            "OSM has no rating/price/photo/offset data"
+            (node.rating, node.price_level, node.rating_count, node.photo_url.as_deref()),
+            (None, None, None, None),
+            "OSM has no rating/price/photo data"
+        );
+        let offset = node
+            .utc_offset_minutes
+            .expect("SLC fixture coords must resolve to a tz offset");
+        assert!(
+            (-420..=-360).contains(&offset),
+            "offset {offset} outside the America/Denver MST/MDT range"
         );
 
         let way = &restaurants[1];

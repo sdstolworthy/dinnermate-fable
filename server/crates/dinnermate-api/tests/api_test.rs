@@ -703,6 +703,57 @@ async fn room_response_carries_participants() {
 }
 
 #[tokio::test]
+async fn create_room_with_eat_at_echoes_and_roundtrips() {
+    let app = router().await;
+    let mut body = create_room_body();
+    body["eat_at"] = json!("2026-06-13T01:00:00Z");
+
+    let response = app
+        .clone()
+        .oneshot(req(Method::POST, "/api/v1/rooms", Some(Uuid::new_v4()), Some(body)))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let created = json_body(response).await;
+    assert_eq!(
+        created["room"]["eat_at"],
+        json!("2026-06-13T01:00:00Z"),
+        "create must echo eat_at exactly, body {created}"
+    );
+
+    let code = created["room"]["code"].as_str().unwrap();
+    let response = app
+        .clone()
+        .oneshot(req(Method::GET, &format!("/api/v1/rooms/{code}"), Some(Uuid::new_v4()), None))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let fetched = json_body(response).await;
+    assert_eq!(
+        fetched["room"]["eat_at"],
+        json!("2026-06-13T01:00:00Z"),
+        "GET must return the persisted eat_at, body {fetched}"
+    );
+}
+
+#[tokio::test]
+async fn create_room_without_eat_at_yields_null() {
+    let app = router().await;
+    let response = app
+        .clone()
+        .oneshot(req(Method::POST, "/api/v1/rooms", Some(Uuid::new_v4()), Some(create_room_body())))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let created = json_body(response).await;
+    assert!(
+        created["room"].as_object().unwrap().contains_key("eat_at"),
+        "eat_at key must be present, body {created}"
+    );
+    assert_eq!(created["room"]["eat_at"], json!(null));
+}
+
+#[tokio::test]
 async fn healthz_no_auth() {
     let app = router().await;
     let response = app

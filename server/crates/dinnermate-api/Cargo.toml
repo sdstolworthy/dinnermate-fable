@@ -19,6 +19,8 @@ reqwest.workspace = true
 async-trait.workspace = true
 rand.workspace = true
 thiserror.workspace = true
+tzf-rs = "1"
+chrono-tz = "0.10"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

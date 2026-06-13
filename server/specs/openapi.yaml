@@ -522,6 +522,13 @@ components:
           format: float
           minimum: 0
           maximum: 5
+        eat_at:
+          type: [string, 'null']
+          format: date-time
+          description: >
+            When the group plans to eat (UTC). When set, the deck excludes
+            restaurants known to be closed at that instant; restaurants with
+            unknown hours or timezone still pass. Omit or null for "anytime".
 
     Room:
       type: object
@@ -538,6 +545,7 @@ components:
         - price_min
         - price_max
         - min_rating
+        - eat_at
         - created_at
         - source_list_name
       properties:
@@ -569,6 +577,10 @@ components:
         min_rating:
           type: number
           format: float
+        eat_at:
+          type: [string, 'null']
+          format: date-time
+          description: When the group plans to eat (UTC); null means anytime.
         created_at:
           type: string
           format: date-time

@@ -32,6 +32,7 @@ pub struct CreateRoomRequest {
     pub price_min: u8,
     pub price_max: u8,
     pub min_rating: f32,
+    pub eat_at: Option<DateTime<Utc>>,
 }
 
 impl From<CreateRoomRequest> for CreateRoom {
@@ -47,7 +48,7 @@ impl From<CreateRoomRequest> for CreateRoom {
                 price_min: req.price_min,
                 price_max: req.price_max,
                 min_rating: req.min_rating,
-                eat_at_utc: None, // mealtime Task2: wire from CreateRoomRequest.eat_at
+                eat_at_utc: req.eat_at,
             },
         }
     }
@@ -67,6 +68,7 @@ pub struct RoomDto {
     pub price_min: u8,
     pub price_max: u8,
     pub min_rating: f32,
+    pub eat_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub source_list_name: Option<String>,
 }
@@ -85,6 +87,7 @@ impl From<Room> for RoomDto {
             price_min: room.params.price_min,
             price_max: room.params.price_max,
             min_rating: room.params.min_rating,
+            eat_at: room.params.eat_at_utc,
             created_at: room.created_at,
             source_list_name: room.source_list_name,
         }
