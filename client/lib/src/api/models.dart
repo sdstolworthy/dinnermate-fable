@@ -172,6 +172,7 @@ class Room {
     required this.minRating,
     required this.createdAt,
     this.sourceListName,
+    this.eatAt,
   });
 
   final String id;
@@ -191,6 +192,10 @@ class Room {
   /// search-parameter rooms and v1/v2 servers that omit the key.
   final String? sourceListName;
 
+  /// When the table plans to eat (UTC instant); null = anytime. Also null
+  /// on pre-v4 servers that omit the key.
+  final DateTime? eatAt;
+
   factory Room.fromJson(Map<String, dynamic> json) => Room(
         id: json['id'] as String,
         code: json['code'] as String,
@@ -205,6 +210,9 @@ class Room {
         minRating: _asDouble(json['min_rating']),
         createdAt: DateTime.parse(json['created_at'] as String),
         sourceListName: json['source_list_name'] as String?,
+        eatAt: json['eat_at'] == null
+            ? null
+            : DateTime.parse(json['eat_at'] as String),
       );
 
   Map<String, dynamic> toJson() => {
@@ -221,6 +229,7 @@ class Room {
         'min_rating': minRating,
         'created_at': createdAt.toUtc().toIso8601String(),
         if (sourceListName != null) 'source_list_name': sourceListName,
+        if (eatAt != null) 'eat_at': eatAt!.toUtc().toIso8601String(),
       };
 }
 
@@ -387,6 +396,7 @@ class CreateRoomRequest {
     required this.priceMin,
     required this.priceMax,
     required this.minRating,
+    this.eatAt,
   });
 
   final String? name;
@@ -399,6 +409,9 @@ class CreateRoomRequest {
   final int priceMax;
   final double minRating;
 
+  /// Desired meal time (any zone; sent as UTC). Null = anytime, key omitted.
+  final DateTime? eatAt;
+
   Map<String, dynamic> toJson() => {
         if (name != null) 'name': name,
         'location_label': locationLabel,
@@ -409,6 +422,7 @@ class CreateRoomRequest {
         'price_min': priceMin,
         'price_max': priceMax,
         'min_rating': minRating,
+        if (eatAt != null) 'eat_at': eatAt!.toUtc().toIso8601String(),
       };
 }
 

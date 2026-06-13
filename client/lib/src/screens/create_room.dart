@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../time_format.dart';
 import '../widgets/restaurant_card.dart';
 import '../widgets/room_created_view.dart';
 
@@ -23,6 +24,30 @@ const _presets = [
 
 enum TravelMode { walking, driving }
 
+enum EatTime { anytime, tonight, pickTime }
+
+/// Resolves the when-picker selection to a UTC instant; null = no meal time.
+/// A picked wall-clock time at or before [now] means tomorrow.
+DateTime? resolveEatAt(EatTime mode, TimeOfDay? picked, DateTime now) {
+  switch (mode) {
+    case EatTime.anytime:
+      return null;
+    case EatTime.tonight:
+      return DateTime(now.year, now.month, now.day, 19).toUtc();
+    case EatTime.pickTime:
+      if (picked == null) return null;
+      var candidate =
+          DateTime(now.year, now.month, now.day, picked.hour, picked.minute);
+      if (!candidate.isAfter(now)) {
+        // Keep the wall-clock time when rolling over (day+1 normalizes),
+        // rather than adding 24h, which would drift across DST boundaries.
+        candidate = DateTime(
+            now.year, now.month, now.day + 1, picked.hour, picked.minute);
+      }
+      return candidate.toUtc();
+  }
+}
+
 const _cuisines = [
   'mexican',
   'thai',
@@ -37,7 +62,10 @@ const _cuisines = [
 ];
 
 class CreateRoomScreen extends StatefulWidget {
-  const CreateRoomScreen({super.key});
+  const CreateRoomScreen({super.key, this.now = DateTime.now});
+
+  /// Injectable clock so tests can pin "Tonight" and roll-over resolution.
+  final DateTime Function() now;
 
   @override
   State<CreateRoomScreen> createState() => _CreateRoomScreenState();
@@ -50,6 +78,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   _CityPreset _city = _presets.first;
   TravelMode _travelMode = TravelMode.walking;
+  EatTime _eatTime = EatTime.anytime;
+  TimeOfDay? _pickedTime;
   double _radiusM = 1000;
   final Set<String> _selectedCuisines = {};
   RangeValues _price = const RangeValues(1, 4);
@@ -91,6 +121,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         priceMin: _price.start.round(),
         priceMax: _price.end.round(),
         minRating: _minRating,
+        eatAt: resolveEatAt(_eatTime, _pickedTime, widget.now()),
       ));
       if (!mounted) return;
       setState(() => _created = room);
@@ -128,8 +159,37 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
+  Future<void> _onEatTimeChanged(Set<EatTime> selection) async {
+    final mode = selection.first;
+    if (mode != EatTime.pickTime) {
+      setState(() => _eatTime = mode);
+      return;
+    }
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _pickedTime ?? TimeOfDay.fromDateTime(widget.now()),
+    );
+    if (!mounted) return;
+    setState(() {
+      if (picked != null) _pickedTime = picked;
+      // Cancelling keeps the previous selection unless a time already exists.
+      if (_pickedTime != null) _eatTime = EatTime.pickTime;
+    });
+  }
+
+  String _eatAtChipLabel(DateTime eatAtUtc) {
+    final local = eatAtUtc.toLocal();
+    final now = widget.now();
+    final isToday = local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+    final time = formatClockTime(local);
+    return isToday ? time : 'Tomorrow $time';
+  }
+
   Widget _form() {
     final theme = Theme.of(context);
+    final eatAt = resolveEatAt(_eatTime, _pickedTime, widget.now());
     final priceLabel =
         '${'\$' * _price.start.round()} – ${'\$' * _price.end.round()}';
     return Center(
@@ -193,6 +253,30 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 ),
               ],
             ),
+            _section('When are you eating?'),
+            SegmentedButton<EatTime>(
+              segments: const [
+                ButtonSegment(value: EatTime.anytime, label: Text('Anytime')),
+                ButtonSegment(value: EatTime.tonight, label: Text('Tonight')),
+                ButtonSegment(
+                  value: EatTime.pickTime,
+                  label: Text('Pick a time'),
+                ),
+              ],
+              selected: {_eatTime},
+              onSelectionChanged: _onEatTimeChanged,
+            ),
+            if (eatAt != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Chip(
+                    avatar: const Text('🕖'),
+                    label: Text(_eatAtChipLabel(eatAt)),
+                  ),
+                ),
+              ),
             _section('How far'),
             SegmentedButton<TravelMode>(
               segments: const [

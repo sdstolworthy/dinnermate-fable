@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../state/room_state.dart';
+import '../time_format.dart';
 import '../widgets/status_views.dart';
 import '../widgets/swipe_deck.dart';
 
@@ -102,7 +103,10 @@ class _RoomScreenState extends State<RoomScreen> {
     final theme = Theme.of(context);
     final participants = _participantsLine(state.participants);
     final sourceListName = state.room?.sourceListName;
-    if (participants == null && sourceListName == null) return null;
+    final eatAt = state.room?.eatAt;
+    if (participants == null && sourceListName == null && eatAt == null) {
+      return null;
+    }
     final style =
         theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
     return Padding(
@@ -118,6 +122,17 @@ class _RoomScreenState extends State<RoomScreen> {
                 'From list: $sourceListName',
                 textAlign: TextAlign.center,
                 style: style?.copyWith(fontStyle: FontStyle.italic),
+              ),
+            ),
+          if (eatAt != null)
+            Padding(
+              padding: EdgeInsets.only(
+                top: participants == null && sourceListName == null ? 0 : 2,
+              ),
+              child: Text(
+                '🕖 Eating at ${formatClockTime(eatAt.toLocal())}',
+                textAlign: TextAlign.center,
+                style: style,
               ),
             ),
         ],
