@@ -205,6 +205,19 @@ request GET "$API/api/v1/rooms/$FL_CODE/matches" "$USER_A"
 assert_status 200
 echo "==> room-from-list OK (code=$FL_CODE, source=$FL_SOURCE)"
 
+STEP="room with meal time echoes eat_at"
+EAT_AT=$(python3 -c 'from datetime import datetime,timedelta,timezone; print((datetime.now(timezone.utc)+timedelta(days=1)).strftime("%Y-%m-%dT19:00:00Z"))')
+request POST "$API/api/v1/rooms" "$USER_A" "{
+    \"location_label\": \"Salt Lake City\",
+    \"lat\": 40.7600, \"lng\": -111.8900, \"radius_m\": 40000,
+    \"cuisines\": [], \"price_min\": 1, \"price_max\": 4, \"min_rating\": 0,
+    \"eat_at\": \"$EAT_AT\"
+}"
+assert_status 201
+ECHOED=$(json_get "$BODY" '.room.eat_at')
+[[ "$ECHOED" == "$EAT_AT" || "$ECHOED" == "${EAT_AT%Z}+00:00" ]] || fail
+echo "==> meal-time OK (eat_at=$ECHOED)"
+
 STEP="pwa manifest"
 request GET "$WEB/manifest.json" "$USER_A"
 assert_status 200
